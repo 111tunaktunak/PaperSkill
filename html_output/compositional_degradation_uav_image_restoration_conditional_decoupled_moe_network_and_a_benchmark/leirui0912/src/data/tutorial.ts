@@ -160,7 +160,7 @@ export const tutorial: TutorialData = {
           kind: 'module',
           id: '4.1',
           title: 'FDPM检测器',
-          desc: '使用CLIP视觉编码器和多标签头检测退化。点击选择退化类型，调整阈值观察检测结果。',
+          desc: 'CLIP视觉编码器 + 轻量多标签头输出 Ĉ = 9 维 logits，式(3) 按固定阈值 0.5 转成 8 位退化掩码 m̂。选择图中实际存在的退化因子，观察掩码与 clean 位。',
           figure: fig('sgdp_semantic.png'),
           componentId: 'fdpm-detector'
         }
@@ -168,7 +168,7 @@ export const tutorial: TutorialData = {
       insight: 'FDPM在原子因子级别预测退化，使用CLIP共享嵌入空间捕获语义关系，标签相似性引导的软对齐保留组合结构。',
       formula: {
         lead: 'FDPM通过多标签预测头输出退化logits',
-        unicode: 'z = h(fᵢ) ∈ ℝ^Ĉ，其中 fᵢ = Eᵥ(x)',
+        unicode: 'z = h(fᵢ) ∈ ℝ⁹（Ĉ = D + 1 = 9），其中 fᵢ = Eᵥ(x)（d = 512）',
         symbols: [
           { sym: 'z', desc: '退化logits向量' },
           { sym: 'h', desc: '多标签预测头：MLP + LayerNorm，隐藏宽度 2d' },

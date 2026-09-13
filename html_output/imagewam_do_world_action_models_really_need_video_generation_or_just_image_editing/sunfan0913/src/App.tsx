@@ -8,13 +8,15 @@ import { Formula } from './components/Formula';
 import { InsightBar } from './components/InsightBar';
 import { Takeaway } from './components/Takeaway';
 import { BiliVideos } from './components/BiliVideos';
+import { SummaryCard } from './components/SummaryCard';
 
 export default function App() {
   const chapters = tutorial.chapters;
   const total = chapters.length;
   const bili = tutorial.bilibili || [];
   const hasBili = bili.length > 0;
-  const lastSlide = total + (hasBili ? 1 : 0); // 0=hero, 1..total=chapters, total+1=bili
+  const summaryIndex = total + 1;
+  const lastSlide = summaryIndex + (hasBili ? 1 : 0); // 0=hero, 1..total=chapters, then summary and optional bili
 
   const [active, setActive] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -53,7 +55,8 @@ export default function App() {
   const sidebarItems = [
     { idx: 0, num: '封面', title: tutorial.meta.titleZh || tutorial.meta.titleEn },
     ...chapters.map((ch, i) => ({ idx: i + 1, num: `§${i + 1}`, title: ch.title })),
-    ...(hasBili ? [{ idx: total + 1, num: '📺', title: '延伸视频' }] : []),
+    { idx: summaryIndex, num: '✓', title: '三条核心 takeaway' },
+    ...(hasBili ? [{ idx: summaryIndex + 1, num: '📺', title: '延伸视频' }] : []),
   ];
 
   const currentChapter = active >= 1 && active <= total ? chapters[active - 1] : null;
@@ -120,6 +123,8 @@ export default function App() {
               {currentChapter.formula ? <Formula formula={currentChapter.formula} /> : null}
               <Takeaway items={currentChapter.takeaways} />
             </section>
+          ) : active === summaryIndex ? (
+            <SummaryCard />
           ) : hasBili ? (
             <BiliVideos items={bili} />
           ) : null}

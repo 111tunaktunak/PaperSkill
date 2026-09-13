@@ -159,22 +159,26 @@ export const tutorial: TutorialData = {
         {
           kind: 'module',
           id: '4.1',
-          title: 'FDPM检测器',
-          desc: 'CLIP视觉编码器 + 轻量多标签头输出 Ĉ = 9 维 logits，式(3) 按固定阈值 0.5 转成 8 位退化掩码 m̂。选择图中实际存在的退化因子，观察掩码与 clean 位。',
+          title: '标签相似度软对齐',
+          desc: '常规对比对齐把整个组合当成一个独立类别，只让它对齐一个 prompt；FDPM 改用标签向量之间的余弦相似度 S（式 4）当软目标，组合因此保留与成分因子的重叠。选一组因子，看各个任务提示拿到的权重。',
           figure: fig('sgdp_semantic.png'),
           componentId: 'fdpm-detector'
         }
       ],
       insight: 'FDPM在原子因子级别预测退化，使用CLIP共享嵌入空间捕获语义关系，标签相似性引导的软对齐保留组合结构。',
       formula: {
-        lead: 'FDPM通过多标签预测头输出退化logits',
-        unicode: 'z = h(fᵢ) ∈ ℝ⁹（Ĉ = D + 1 = 9），其中 fᵢ = Eᵥ(x)（d = 512）',
+        lead: 'FDPM通过多标签预测头输出退化logits，并用标签相似度做软对齐',
+        unicode:
+          'z = h(fᵢ) ∈ ℝ⁹（Ĉ = D + 1 = 9），其中 fᵢ = Eᵥ(x)（d = 512）<br>' +
+          'Sᵢⱼ = tᵢ·tⱼ / (‖tᵢ‖‖tⱼ‖)（式 4）',
         symbols: [
           { sym: 'z', desc: '退化logits向量' },
           { sym: 'h', desc: '多标签预测头：MLP + LayerNorm，隐藏宽度 2d' },
           { sym: 'fᵢ', desc: 'CLIP图像嵌入（d = 512）' },
           { sym: 'Eᵥ', desc: 'CLIP ViT-B/32 视觉编码器' },
-          { sym: 'Ĉ', desc: 'logits 维度 = D+1 = 9：D 位退化 + 1 个 clean 位。复原阶段丢弃 clean 位，只用剩下的 8 位作退化掩码' }
+          { sym: 'Ĉ', desc: 'logits 维度 = D+1 = 9：D 位退化 + 1 个 clean 位。复原阶段丢弃 clean 位，只用剩下的 8 位作退化掩码' },
+          { sym: 'tₖ', desc: '任务 k 的多热标签向量，Ĉ = 9 维 0/1（K = 22 个对齐任务：1 clean + 21 已见配置）' },
+          { sym: 'Sᵢⱼ', desc: '两个任务标签向量的余弦相似度（式 4），衡量它们的因子重叠程度。论文用它代替 one-hot 目标：雨+雾 离 雨 和 雾 都比离 噪声 近' }
         ]
       },
       takeaways: [

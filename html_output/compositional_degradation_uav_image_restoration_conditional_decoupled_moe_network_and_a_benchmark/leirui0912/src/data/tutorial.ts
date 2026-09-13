@@ -414,8 +414,8 @@ export const tutorial: TutorialData = {
       badgeLabel: '基础+训练',
       bridge: 'MDUR是首个大规模UAV组合图像修复基准，包含43种退化配置，从单一退化到四因子组合。',
       analogy: {
-        title: '修复前后对比',
-        text: '就像对比照片编辑前后的效果一样，我们在MDUR基准上比较各方法的性能。',
+        title: '基准先行，留出集留得狠',
+        text: '8 种原子退化因子，一张图最多叠 4 个，得到 43 种有效配置；其中 21 种进训练（已见），另外 22 种整个留出来做 zero-shot（未见）。留出集还特意压在 low-light+blur 与 low-light+artifact 这两类组合以及它们的高阶扩展上——训练时没见过，才知道前面那套显式因子条件到底有没有用。',
         componentId: 'result-comparison'
       },
       modules: [
@@ -423,25 +423,26 @@ export const tutorial: TutorialData = {
           kind: 'module',
           id: '10.1',
           title: '结果竞赛器',
-          desc: '对比DAME-Net与基线方法（AirNet, DehazeFormer, Restormer, PromptIR, AdaIR）在已见（21 个任务）与未见（22 个任务，zero-shot）两组口径下的平均性能。',
+          desc: '对比DAME-Net与五个基线（AirNet, DehazeFormer, Restormer, PromptIR, AdaIR）在两组口径下的平均性能：已见 21 个任务、未见 22 个任务（zero-shot）。两组都按退化复杂度再分组报告，这里用的是六个方法都报告了的两行总平均（表 I 的 Overall Seen / Overall Unseen）。',
           figure: fig('qualitative_analysis.jpg'),
           componentId: 'result-comparison'
         }
       ],
-      insight: 'DAME-Net在两组口径的每一个分组上都是最高：已见平均 27.67 dB / 0.8602，未见平均 18.62 dB / 0.6271，高出最强基线 2.16 dB——未见配置上的领先幅度明显大于已见。',
+      insight: '表 I 里 DAME-Net 在每一个分组上都是最高。已见侧随复杂度上升，自身从 29.52 dB / 0.9091（单因子）降到 26.88 dB / 0.8389（双因子）、25.73 dB / 0.8105（三因子），总体已见 27.67 dB / 0.8602；未见侧总体 18.62 dB / 0.6271。领先幅度在未见侧明显更大：总体未见高出最强基线 PromptIR 2.16 dB，而总体已见只高出 0.24 dB。',
       formula: {
         lead: '评估指标',
-        unicode: 'PSNR = 10·log₁₀(MAX²/MSE)，SSIM在Y通道计算',
+        unicode: 'PSNR = 10·log₁₀(MAX²/MSE)，SSIM 均在该图的亮度通道（YCbCr 的 Y 通道）上计算',
         symbols: [
           { sym: 'PSNR', desc: '峰值信噪比（dB），越高越好' },
           { sym: 'SSIM', desc: '结构相似性，越高越好' },
-          { sym: 'MAX', desc: '像素最大值（255）' }
+          { sym: 'MAX', desc: '像素最大值（255）' },
+          { sym: 'Y 通道', desc: '论文明确只在亮度通道上报告，不做 RGB 平均' }
         ]
       },
       takeaways: [
         { icon: '🎯', title: '一致优势', desc: '论文表 I 的每个分组（已见/未见 × 单/双/三/四因子）上 DAME-Net 都是最高' },
-        { icon: '🔧', title: '组合泛化', desc: '未见配置上的领先幅度更大：总体未见 18.62 dB，高出最强基线 2.16 dB' },
-        { icon: '✨', title: '下游受益', desc: '修复后的图像提升了目标检测性能' }
+        { icon: '🔧', title: '组合泛化', desc: '未见配置上的领先幅度更大：总体未见 18.62 dB，高出最强基线 2.16 dB；已见只高出 0.24 dB' },
+        { icon: '✨', title: '下游受益', desc: '论文表 II：冻结的 YOLOv8n 在 43 个退化设置上，mAP50 从退化输入的 0.0971 升到 0.2518，比最强基线 PromptIR（0.2469）高；干净图（GT）上限 0.5419' }
       ],
     },
   ],

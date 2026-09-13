@@ -26,12 +26,12 @@ export const tutorial: TutorialData = {
     oldMethod: {
       desc: '隐式统一修复：将多种退化压缩为单一整体条件，导致因子间干扰和修复质量下降',
       figure: fig('blind_restoration.png'),
-      componentId: 'example-slider'
+      componentId: 'hero-condition-compare'
     },
     newMethod: {
       desc: 'DAME-Net显式解耦：显式感知每种退化因子，条件引导选择性修复，避免干扰',
       figure: fig('framework.png'),
-      componentId: 'example-slider'
+      componentId: 'hero-condition-compare'
     },
   },
   chapters: [

@@ -196,20 +196,20 @@ export const tutorial: TutorialData = {
       badgeLabel: '基础+训练',
       bridge: 'Conditioned Decoupled MoE Module (CDMM) 是DAME-Net的修复组件，使用FDPM提供的退化线索引导选择性修复。',
       analogy: {
-        title: '选择修复工具',
-        text: '就像根据照片问题选择不同的编辑工具一样，CDMM根据退化掩码路由到相关专家。',
+        title: '四条通路各管一段',
+        text: '就像修一张有多种毛病的照片要分头处理——校光照的、补细节的、去噪的各管一摊，CDMM 也把修复拆成四条通路：条件编码、双域校正、解耦专家、低频基座。',
         componentId: 'cdmm-router'
       },
       modules: [
         {
           kind: 'module',
           id: '5.1',
-          title: '专家路由器',
-          desc: '根据退化掩码激活相关专家，抑制无关处理。切换退化类型观察专家激活模式。',
+          title: '退化 token 编码器',
+          desc: 'CDMM 四个协同组件里的第一个：把 FDPM 给的 (m̂, p) 变成每个阶段的条件向量。点选退化因子，看 10 个 token 里哪些参与注意力、哪些被硬 key 掩码排除。',
           componentId: 'cdmm-router'
         }
       ],
-      insight: 'CDMM使用掩码约束路由，将专家分为全局（雾、低光、过曝）和空间（雨、雪、模糊、噪声、伪影）两组，实现选择性因子级校正。',
+      insight: 'CDMM 由四个协同组件组成：退化 token 编码器（严格 token 掩码，m̂ⱼ = 0 的 token 被硬排除）、空间-频率混合骨干（5 阶段，通道 24/48/96/48/24，每阶段一个 CDCB）、DC-MoE 前馈（3 全局 + 5 空间专家）、低频基座分支。',
       formula: {
         lead: '退化 token 编码器：把 (m̂, p) 编码成每个阶段的查询结果',
         unicode:
@@ -228,9 +228,9 @@ export const tutorial: TutorialData = {
         ]
       },
       takeaways: [
-        { icon: '🎯', title: '条件引导', desc: 'CDMM使用退化线索引导修复过程' },
-        { icon: '🔧', title: '掩码路由', desc: '掩码约束路由选择性激活专家' },
-        { icon: '✨', title: '专家分组', desc: '全局专家（3个）+ 空间专家（5个）' }
+        { icon: '🎯', title: '四个协同组件', desc: '条件编码 + 双域骨干 + 解耦 MoE + 低频基座' },
+        { icon: '🔧', title: '严格 token 掩码', desc: 'm̂ⱼ = 0 的退化 token 被硬 key 掩码排除，不是软降权（表 III：去掉掉 0.56 dB）' },
+        { icon: '✨', title: '逐阶段条件', desc: '5 个阶段各自一个条件向量 gₛ，而不是全场共用一个' }
       ],
     },
     // Chapter 6: CDCB

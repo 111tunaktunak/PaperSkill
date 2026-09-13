@@ -330,8 +330,8 @@ export const tutorial: TutorialData = {
       badgeLabel: '训练',
       bridge: 'DAME-Net的架构创新包括Decoupled MoE Feed-Forward (DC-MoE) 和Base-Residual Dual-Branch Reconstruction。',
       analogy: {
-        title: '高级编辑工具',
-        text: '就像专业编辑软件有高级工具面板一样，DC-MoE提供专门的专家网络处理不同类型的退化。',
+        title: 'Base-Residual 双分支重建',
+        text: '一张退化图里，「整体偏暗、偏灰」这种低频光照问题和「雨条纹、噪声」这种高频细节问题，对解码器的要求并不一样。DAME-Net 干脆拆成两支：基座分支只看低频，残差分支只看高频，最后相加。',
         componentId: 'architecture-explorer'
       },
       modules: [
@@ -339,41 +339,41 @@ export const tutorial: TutorialData = {
           kind: 'module',
           id: '8.1',
           title: '架构浏览器',
-          desc: '点击查看DAME-Net架构的各个组件，了解数据如何在网络中流动。',
+          desc: '从输入到输出点一遍整条链路，看每一段的数据形状与来历。5 阶段 U 形骨干、通道 24/48/96/48/24、Eg = 3 / Es = 5 都按论文写。',
           componentId: 'architecture-explorer'
         },
         {
           kind: 'module',
           id: '8.2',
-          title: 'DC-MoE路由器',
-          desc: '演示全局专家和空间专家的路由机制。切换退化类型观察哪些专家被激活。',
+          title: 'DC-MoE 路由器',
+          desc: '选退化因子当作预测出的掩码 m̂，看全局组与空间组各自怎么清零、怎么重归一化。一个都不选就是「没有专家被激活」的极端情况，那时输出只剩基座分支 B(X)。',
           figure: fig('DCMOE.png'),
           componentId: 'dcmoe-router'
         }
       ],
-      insight: 'DC-MoE将专家分为全局（3个，处理雾、低光、过曝）和空间（5个，处理雨、雪、模糊、噪声、伪影）两组，通过掩码约束路由避免干扰。',
+      insight: 'DC-MoE 把专家分成全局组（3 个：雾、低光、过曝，管场景级退化）和空间组（5 个：雨、雪、模糊、噪声、伪影，管局部退化）。掩码先把候选选出来，两个独立门控再在各自的激活子集上重归一化（式 13），所以未激活的专家权重恒为 0；空间专家的输出还要乘一张 H×W 的空间路由图 Rⱼ。',
       formula: {
         lead: '掩码约束路由与专家聚合（式 13 / 式 14）',
         unicode:
-          'm̂ᵍ = Renorm(g ⊙ m̂ᵍ)，m̂ˢ = Renorm(s ⊙ m̂ˢ)<br>' +
-          'FFN_MoE(X) = B(X) + Σᵢ m̂ᵢᵍ·Eᵢᵍ(X) + Σⱼ m̂ⱼˢ·Rⱼ ⊙ Eⱼˢ(X)',
+          'ω̂ᵍ = Renorm(ωᵍ ⊙ m̂ᵍ)，ω̂ˢ = Renorm(ωˢ ⊙ m̂ˢ)<br>' +
+          'FFN_MoE(X) = B(X) + Σᵢ ω̂ᵢᵍ·Eᵢᵍ(X) + Σⱼ ω̂ⱼˢ·Rⱼ ⊙ Eⱼˢ(X)',
         symbols: [
           { sym: 'FFN_MoE', desc: '解耦 MoE 前馈块的输出（是这个前馈块，不是整个网络）' },
           { sym: 'B', desc: '基座分支 B(X)：即使没有任何专家被激活也提供非零容量' },
-          { sym: 'm̂ᵢᵍ', desc: '第 i 个全局专家的路由权重：掩码 × 门控后重归一化' },
-          { sym: 'm̂ⱼˢ', desc: '第 j 个空间专家的路由权重：掩码 × 门控后重归一化' },
+          { sym: 'm̂ᵍ / m̂ˢ', desc: '掩码位：全局组选 {雾, 低光, 过曝}，空间组选 {雨, 雪, 模糊, 噪声, 伪影}' },
+          { sym: 'ωᵍ / ωˢ', desc: '两个独立门控算出的原始权重（论文未报告其取值）' },
+          { sym: 'ω̂ᵢᵍ', desc: '第 i 个全局专家的路由权重：掩码 × 门控后重归一化' },
+          { sym: 'ω̂ⱼˢ', desc: '第 j 个空间专家的路由权重：掩码 × 门控后重归一化' },
           { sym: 'Eᵢᵍ', desc: '第 i 个全局专家（共 3 个：雾、低光、过曝）' },
           { sym: 'Eⱼˢ', desc: '第 j 个空间专家（共 5 个：雨、雪、模糊、噪声、伪影）' },
           { sym: 'Rⱼ', desc: '空间路由图：取值 [0,1] 的 H×W 图，与专家输出逐元素相乘（⊙）' },
-          { sym: 'm̂ᵍ', desc: '全局退化掩码位（雾、低光、过曝）' },
-          { sym: 'm̂ˢ', desc: '空间退化掩码位（雨、雪、模糊、噪声、伪影）' },
           { sym: 'X', desc: '输入特征图' }
         ]
       },
       takeaways: [
-        { icon: '🎯', title: '全局专家', desc: '3个专家处理场景级退化（雾、低光、过曝）' },
-        { icon: '🔧', title: '空间专家', desc: '5个专家处理局部退化（雨、雪、模糊、噪声、伪影）' },
-        { icon: '✨', title: '双分支重建', desc: '低频基础分支 + 高频残差分支' }
+        { icon: '🎯', title: '全局专家', desc: '3 个专家处理场景级退化（雾、低光、过曝）；表 IV：去掉 DC-MoE 掉 0.70 dB、去掉解耦门控掉 0.58 dB' },
+        { icon: '🔧', title: '空间路由', desc: '5 个空间专家各自再预测一张 [0,1] 的 H×W 路由图 Rⱼ；去掉空间路由掉 0.28 dB' },
+        { icon: '✨', title: '双分支重建', desc: '基座分支出低频光照 ŷ_base，骨干出全分辨率残差 ŷ_res，ŷ = ŷ_base + ŷ_res' }
       ],
     },
     // Chapter 9: 实用技巧

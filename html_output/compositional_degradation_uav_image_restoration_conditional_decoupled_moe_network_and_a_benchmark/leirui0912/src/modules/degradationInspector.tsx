@@ -8,9 +8,12 @@ import { DEGRADATIONS, SW, SH, getDegraded, getScene } from './uavScene';
 // 退化识别器：点选退化因子，照片当场变化。
 //
 // 同一个组件在页面里出现两次（第 1 章的类比卡与模块 1.1 各一次），
-// 两处刻意有一处差别 —— 模块槽额外用一行小字列出当前激活了哪些退化因子：
-//   moduleId === 'ana' -> 类比卡（AnalogyCard.tsx 固定传 "ana"）：只给照片，不加标注
-//   其余（模块 1.1）    -> 照片同款，下方用小字标出激活的因子
+// 两处刻意不同，差别都在「标注」上 —— 照片与开关本身完全一致：
+//   moduleId === 'ana' -> 类比卡（AnalogyCard.tsx 固定传 "ana"）：
+//        只有照片，不写任何类型文字，也不给计数；按钮不带选中态，
+//        点了之后唯一的反馈就是照片本身的变化；末尾另附一个「清除」按钮。
+//   其余（模块 1.1）    -> 照片同款，下方用小字标出激活的因子与数量，
+//        按钮带选中态，便于把「点了哪个」和「照片里的变化」对上。
 // 照片本身、可选因子、按钮样式两边完全一致，来自 uavScene / factorChips，
 // 所以改动一次两边同步，不会各自漂移。
 
@@ -30,7 +33,8 @@ const PHOTO_Y = 12;
 const W = PHOTO_W + PHOTO_X * 2;
 const CAP_Y = PHOTO_Y + PHOTO_H + 24; // 计数行
 const LEGEND_Y = CAP_Y + 22; // 小字图例首行
-const H_ANALOGY = CAP_Y + 14;
+// 类比卡槽只有照片，高度到照片下沿再留同样的边距即可
+const H_ANALOGY = PHOTO_Y + PHOTO_H + PHOTO_Y;
 const H_MODULE = LEGEND_Y + 16;
 
 const SWATCH = 9;
@@ -75,8 +79,9 @@ function drawLegend(ctx: CanvasRenderingContext2D, active: string[]) {
   ctx.textBaseline = 'alphabetic';
 }
 
-function paint(ctx: CanvasRenderingContext2D, active: string[], withLegend: boolean) {
-  const h = withLegend ? H_MODULE : H_ANALOGY;
+/** withMeta = 是否画照片下面那块文字（计数行 + 小字图例）。类比卡槽只画照片。 */
+function paint(ctx: CanvasRenderingContext2D, active: string[], withMeta: boolean) {
+  const h = withMeta ? H_MODULE : H_ANALOGY;
   ctx.clearRect(0, 0, W, h);
 
   const photo = active.length ? getDegraded(active) : getScene();
@@ -86,15 +91,19 @@ function paint(ctx: CanvasRenderingContext2D, active: string[], withLegend: bool
   ctx.lineWidth = 1;
   ctx.strokeRect(PHOTO_X + 0.5, PHOTO_Y + 0.5, PHOTO_W - 1, PHOTO_H - 1);
 
-  drawCount(ctx, active.length);
-  if (withLegend) drawLegend(ctx, active);
+  if (withMeta) {
+    drawCount(ctx, active.length);
+    drawLegend(ctx, active);
+  }
 }
 
 export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleId }) => {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [active, setActive] = useState<string[]>([]);
-  const withLegend = moduleId !== 'ana';
+  // 类比卡槽：照片之外不加任何文字，按钮也不带选中态（见文件头注释）
+  const analogy = moduleId === 'ana';
+  const withMeta = !analogy;
 
   const toggle = (id: string) =>
     setActive((prev) => {
@@ -110,7 +119,7 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
   useEffect(() => {
     if (!canvasEl) return;
 
-    const h = withLegend ? H_MODULE : H_ANALOGY;
+    const h = withMeta ? H_MODULE : H_ANALOGY;
     const dpr = window.devicePixelRatio || 1;
     let ctx = ctxRef.current;
     // 背衬尺寸与当前 dpr 不一致时才重建（首次挂载，或跨屏拖动导致 dpr 变化）。
@@ -138,11 +147,11 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
       ctxRef.current = ctx;
     }
 
-    paint(ctx, active, withLegend);
+    paint(ctx, active, withMeta);
 
     // components.css 里 canvas 默认 opacity:0，靠 .is-ready 淡入。
     canvasEl.classList.add('is-ready');
-  }, [canvasEl, active, withLegend]);
+  }, [canvasEl, active, withMeta]);
 
   const n = active.length;
   let feedbackText: string;
@@ -170,10 +179,15 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
           ref={setCanvasEl}
           id={`cv-${chapterId}-${moduleId}-deg`}
           width={W}
-          height={withLegend ? H_MODULE : H_ANALOGY}
+          height={withMeta ? H_MODULE : H_ANALOGY}
         />
 
-        <FactorChips active={active} onToggle={toggle} />
+        <FactorChips
+          active={active}
+          onToggle={toggle}
+          showSelection={withMeta}
+          onClear={analogy ? () => setActive([]) : undefined}
+        />
       </div>
 
       <div id={`feedback-${chapterId}-${moduleId}`} className={`feedback ${feedbackCls}`}>

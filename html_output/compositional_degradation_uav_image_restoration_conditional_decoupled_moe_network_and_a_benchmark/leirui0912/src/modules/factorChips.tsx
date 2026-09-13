@@ -31,19 +31,27 @@ export function readableBg(hex: string): string {
 export const FactorChips: React.FC<{
   active: string[];
   onToggle: (id: string) => void;
-}> = ({ active, onToggle }) => (
+  /**
+   * 是否给按钮加选中态。关掉后按钮外观完全不变，反馈只由照片本身承担
+   * （`aria-pressed` 照旧更新，读屏软件仍能播报当前选中的因子）。
+   */
+  showSelection?: boolean;
+  /** 传入则在末尾附一个「清除」按钮，一次清空全部已选退化。 */
+  onClear?: () => void;
+}> = ({ active, onToggle, showSelection = true, onClear }) => (
   <div className="chip-row">
     {DEGRADATIONS.map((d) => {
       const on = active.includes(d.id);
       const bg = readableBg(d.color);
+      const lit = on && showSelection;
       return (
         <button
           key={d.id}
           type="button"
-          className={`chip${on ? ' selected' : ''}`}
+          className={`chip${lit ? ' selected' : ''}`}
           aria-pressed={on}
           onClick={() => onToggle(d.id)}
-          style={on ? { background: bg, borderColor: bg, color: '#fff' } : undefined}
+          style={lit ? { background: bg, borderColor: bg, color: '#fff' } : undefined}
         >
           <span
             style={{
@@ -60,6 +68,25 @@ export const FactorChips: React.FC<{
         </button>
       );
     })}
+
+    {onClear && (
+      // 不带色块，读起来就是个动作而不是第 9 个退化因子
+      <button
+        type="button"
+        className="chip"
+        onClick={onClear}
+        disabled={active.length === 0}
+        title={active.length ? '清除全部退化' : '当前没有选中的退化'}
+        style={{
+          borderStyle: 'dashed',
+          // .chip 没有定义 :disabled 样式，不自己压暗的话禁用态与可点态一模一样
+          opacity: active.length ? 1 : 0.4,
+          cursor: active.length ? 'pointer' : 'not-allowed',
+        }}
+      >
+        清除
+      </button>
+    )}
   </div>
 );
 

@@ -446,26 +446,40 @@ export const tutorial: TutorialData = {
       ],
     },
   ],
+  // 四条 BVID 均在 2026-09-13 用 bilibili 的 view 接口逐条核对过：标题取接口返回值原文，
+  // pic 转 https 后固化在 cover 里，stat.view 按框架 formatViews 的写法固化成 views
+  // （>=10000 用「万播放」），这样封面和播放量不依赖运行时那次 JSONP 取数。
+  // 播放量：4.8 万 / 38.2 万 / 5157 / 2714。后两条低于 1 万，理由是它们是检索到的视频里
+  // 唯一直接讲「低见度（去雾+去雨+低照度）论文脉络」和「深度学习去雾论文梳理」的，
+  // 与本论文的退化集合最贴近；没有检索到讲无人机多退化复原或 MDUR 基准的视频。
   bilibili: [
     {
-      bvid: 'BV1xx411c7mD',
-      title: '无人机图像修复技术详解',
-      reason: '相关领域技术讲解'
+      bvid: 'BV1bK411p7En',
+      title: '【图图Seminar03】石争浩：从先验到深度：低见度图像智能增强',
+      reason: '从暗通道先验讲到深度去雾、去雨、低照度，与本论文的退化集合最贴',
+      cover: 'https://i0.hdslb.com/bfs/archive/c7cb63b22f419360ab62695cb568fa55a9af8367.jpg',
+      views: '2714播放'
     },
     {
-      bvid: 'BV1GJ411x7h7',
-      title: '图像修复深度学习方法',
-      reason: '图像修复方法综述'
+      bvid: 'BV1Yk4veLEwv',
+      title: '深度学习 | 图像去雾任务 | 近8年SCI论文解析',
+      reason: '深度学习去雾的方法脉络，可对照本论文的退化建模与统一复原思路',
+      cover: 'https://i2.hdslb.com/bfs/archive/732f1112a3cb40944b9828a27bb308c226cb4913.jpg',
+      views: '5157播放'
     },
     {
-      bvid: 'BV1uT4y1P7CX',
-      title: 'Mixture of Experts原理讲解',
-      reason: 'MoE架构原理'
+      bvid: 'BV1Gj9ZYdE4N',
+      title: 'MOE终于迎来可视化解读！傻瓜都能看懂MoE核心原理！',
+      reason: '稀疏激活与路由器分工的可视化讲解，对应本论文的 DC-MoE',
+      cover: 'https://i0.hdslb.com/bfs/archive/86fdc2c23b79824b2fa1b62b237f8e48a78fd3df.jpg',
+      views: '4.8万播放'
     },
     {
-      bvid: 'BV1hS4y1N7VX',
-      title: 'CLIP模型详解',
-      reason: 'CLIP视觉语言模型'
+      bvid: 'BV1SL4y1s7LQ',
+      title: 'CLIP 论文逐段精读【论文精读】',
+      reason: 'CLIP 逐段精读，对应本论文用语义编码器产出的退化 token 与语义嵌入',
+      cover: 'https://i1.hdslb.com/bfs/archive/b741a268f24deacb2eba536bf5f990817e82a01f.jpg',
+      views: '38.2万播放'
     }
   ],
 };

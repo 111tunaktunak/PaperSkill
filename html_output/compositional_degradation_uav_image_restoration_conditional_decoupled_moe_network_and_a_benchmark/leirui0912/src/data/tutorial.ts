@@ -171,9 +171,10 @@ export const tutorial: TutorialData = {
         unicode: 'z = h(fᵢ) ∈ ℝ^Ĉ，其中 fᵢ = Eᵥ(x)',
         symbols: [
           { sym: 'z', desc: '退化logits向量' },
-          { sym: 'h(·)', desc: '多标签预测头（MLP）' },
-          { sym: 'fᵢ', desc: 'CLIP图像嵌入' },
-          { sym: 'Eᵥ', desc: 'CLIP视觉编码器' }
+          { sym: 'h', desc: '多标签预测头：MLP + LayerNorm，隐藏宽度 2d' },
+          { sym: 'fᵢ', desc: 'CLIP图像嵌入（d = 512）' },
+          { sym: 'Eᵥ', desc: 'CLIP ViT-B/32 视觉编码器' },
+          { sym: 'Ĉ', desc: 'logits 维度 = D+1 = 9：D 位退化 + 1 个 clean 位。复原阶段丢弃 clean 位，只用剩下的 8 位作退化掩码' }
         ]
       },
       takeaways: [
@@ -206,11 +207,19 @@ export const tutorial: TutorialData = {
       ],
       insight: 'CDMM使用掩码约束路由，将专家分为全局（雾、低光、过曝）和空间（雨、雪、模糊、噪声、伪影）两组，实现选择性因子级校正。',
       formula: {
-        lead: 'CDMM将FDPM输出转换为阶段条件向量',
-        unicode: '{gₛ}ₛ₌₁⁵ = DegradationEncoder(m̂, p)',
+        lead: '退化 token 编码器：把 (m̂, p) 编码成每个阶段的查询结果',
+        unicode:
+          'U = [u_j; u_p; u_g]（D 个退化 token + 语义 token + 全局 token，e = 256）<br>' +
+          'Z = Attn(Q, U, U)，{gₛ}ₛ₌₁⁵ = Z 的第 s 行（S = 5，4 头交叉注意力）',
         symbols: [
+          { sym: 'U', desc: '键值集合，形状 (D+2)×e：D 个可学习退化 token + 语义 token u_p + 全局 token u_g' },
+          { sym: 'u_j', desc: '第 j 个可学习退化 token（j = 1…D），与第 j 种原子退化对应' },
+          { sym: 'u_p', desc: '语义 token u_p = LN(W_p·p)' },
+          { sym: 'u_g', desc: '全局 token u_g = LN(MLP_g([m̂, p]))' },
+          { sym: 'Q', desc: '阶段查询 token 集合 {q_s}（S = 5 个阶段）' },
+          { sym: 'Z', desc: '交叉注意力输出，形状 S×e；第 s 行就是第 s 阶段的条件向量 g_s' },
           { sym: 'gₛ', desc: '第s阶段的条件向量' },
-          { sym: 'm̂', desc: '预测的退化掩码' },
+          { sym: 'm̂', desc: '预测的退化掩码；m̂ⱼ = 0 的退化 token 会被硬 key 掩码排除，不参与注意力' },
           { sym: 'p', desc: '语义嵌入' }
         ]
       },
@@ -283,13 +292,17 @@ export const tutorial: TutorialData = {
       ],
       insight: '两阶段训练：Stage I训练FDPM（CLIP视觉编码器+多标签头），Stage II冻结FDPM，训练CDMM修复网络。',
       formula: {
-        lead: '训练包含感知损失和修复损失',
-        unicode: 'L = λ_align·L_align + λ_cls·L_cls + λ_freq·L_freq + λ_p·L_p',
+        lead: '两个阶段各有一条损失（式 7 / 式 16），不是合成的一条',
+        unicode:
+          'L_P = λ_align·L_align + λ_cls·L_cls（Stage I）<br>' +
+          'L_R = ‖ŷ − y‖₁ + λ_f·L_freq + λ_p·L_base（Stage II）',
         symbols: [
-          { sym: 'L_align', desc: '标签相似性对齐损失' },
-          { sym: 'L_cls', desc: '多标签BCE分类损失' },
-          { sym: 'L_freq', desc: '掩码FFT幅度损失' },
-          { sym: 'L_p', desc: '空间L1损失' }
+          { sym: 'L_P', desc: '感知阶段损失：Stage I 用它训练 FDPM，收敛后冻结（式 7）' },
+          { sym: 'L_R', desc: '修复阶段损失：Stage II 用它训练修复网络（式 16）' },
+          { sym: 'L_align', desc: '标签相似性引导的跨模态软对齐损失（λ_align = 0.1）' },
+          { sym: 'L_cls', desc: '多标签 BCE 分类损失（λ_cls = 0.9）' },
+          { sym: 'L_freq', desc: '掩码 FFT 幅度损失（λ_f = 0.1）' },
+          { sym: 'L_base', desc: '低频基座分支损失，监督目标是引导滤波平滑后的 y_base（λ_p = 0.1）' }
         ]
       },
       takeaways: [
@@ -330,13 +343,21 @@ export const tutorial: TutorialData = {
       ],
       insight: 'DC-MoE将专家分为全局（3个，处理雾、低光、过曝）和空间（5个，处理雨、雪、模糊、噪声、伪影）两组，通过掩码约束路由避免干扰。',
       formula: {
-        lead: 'DC-MoE的路由公式',
-        unicode: 'y = Σⱼ∈Eᵍ m̂ᵍⱼ·Eⱼ(x) + Σⱼ∈Eˢ m̂ˢⱼ·Rⱼ(x)·Eⱼ(x)',
+        lead: '掩码约束路由与专家聚合（式 13 / 式 14）',
+        unicode:
+          'm̂ᵍ = Renorm(g ⊙ m̂ᵍ)，m̂ˢ = Renorm(s ⊙ m̂ˢ)<br>' +
+          'FFN_MoE(X) = B(X) + Σᵢ m̂ᵢᵍ·Eᵢᵍ(X) + Σⱼ m̂ⱼˢ·Rⱼ ⊙ Eⱼˢ(X)',
         symbols: [
-          { sym: 'Eᵍ', desc: '全局专家集合（3个）' },
-          { sym: 'Eˢ', desc: '空间专家集合（5个）' },
-          { sym: 'Rⱼ', desc: '空间路由图' },
-          { sym: 'm̂', desc: '退化掩码' }
+          { sym: 'FFN_MoE', desc: '解耦 MoE 前馈块的输出（是这个前馈块，不是整个网络）' },
+          { sym: 'B', desc: '基座分支 B(X)：即使没有任何专家被激活也提供非零容量' },
+          { sym: 'm̂ᵢᵍ', desc: '第 i 个全局专家的路由权重：掩码 × 门控后重归一化' },
+          { sym: 'm̂ⱼˢ', desc: '第 j 个空间专家的路由权重：掩码 × 门控后重归一化' },
+          { sym: 'Eᵢᵍ', desc: '第 i 个全局专家（共 3 个：雾、低光、过曝）' },
+          { sym: 'Eⱼˢ', desc: '第 j 个空间专家（共 5 个：雨、雪、模糊、噪声、伪影）' },
+          { sym: 'Rⱼ', desc: '空间路由图：取值 [0,1] 的 H×W 图，与专家输出逐元素相乘（⊙）' },
+          { sym: 'm̂ᵍ', desc: '全局退化掩码位（雾、低光、过曝）' },
+          { sym: 'm̂ˢ', desc: '空间退化掩码位（雨、雪、模糊、噪声、伪影）' },
+          { sym: 'X', desc: '输入特征图' }
         ]
       },
       takeaways: [
@@ -392,12 +413,12 @@ export const tutorial: TutorialData = {
           kind: 'module',
           id: '10.1',
           title: '结果竞赛器',
-          desc: '对比DAME-Net与基线方法（AirNet, DehazeFormer, Restormer, PromptIR, AdaIR）的性能。',
+          desc: '对比DAME-Net与基线方法（AirNet, DehazeFormer, Restormer, PromptIR, AdaIR）在已见（21 个任务）与未见（22 个任务，zero-shot）两组口径下的平均性能。',
           figure: fig('qualitative_analysis.jpg'),
           componentId: 'result-comparison'
         }
       ],
-      insight: 'DAME-Net在43种退化配置上一致优于基线方法，特别是在未见和高阶组合退化上 gains 更大。',
+      insight: 'DAME-Net在两组口径的每一个分组上都是最高：已见平均 27.67 dB / 0.8602，未见平均 18.62 dB / 0.6271，高出最强基线 2.16 dB——未见配置上的领先幅度明显大于已见。',
       formula: {
         lead: '评估指标',
         unicode: 'PSNR = 10·log₁₀(MAX²/MSE)，SSIM在Y通道计算',
@@ -408,8 +429,8 @@ export const tutorial: TutorialData = {
         ]
       },
       takeaways: [
-        { icon: '🎯', title: '一致优势', desc: 'DAME-Net在43种退化配置上一致优于基线' },
-        { icon: '🔧', title: '组合泛化', desc: '在未见和高阶组合退化上 gains 更大' },
+        { icon: '🎯', title: '一致优势', desc: '论文表 I 的每个分组（已见/未见 × 单/双/三/四因子）上 DAME-Net 都是最高' },
+        { icon: '🔧', title: '组合泛化', desc: '未见配置上的领先幅度更大：总体未见 18.62 dB，高出最强基线 2.16 dB' },
         { icon: '✨', title: '下游受益', desc: '修复后的图像提升了目标检测性能' }
       ],
     },

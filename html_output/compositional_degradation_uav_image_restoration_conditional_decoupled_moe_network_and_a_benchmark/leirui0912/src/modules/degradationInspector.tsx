@@ -11,9 +11,10 @@ import { DEGRADATIONS, SW, SH, getDegraded, getScene } from './uavScene';
 // 两处刻意不同，差别都在「标注」上 —— 照片与开关本身完全一致：
 //   moduleId === 'ana' -> 类比卡（AnalogyCard.tsx 固定传 "ana"）：
 //        只有照片，不写任何类型文字，也不给计数；按钮不带选中态，
-//        点了之后唯一的反馈就是照片本身的变化；末尾另附一个「清除」按钮。
+//        点了之后唯一的反馈就是照片本身的变化。
 //   其余（模块 1.1）    -> 照片同款，下方用小字标出激活的因子与数量，
 //        按钮带选中态，便于把「点了哪个」和「照片里的变化」对上。
+// 两处的按钮行末尾都带一个「清除」按钮，一次清空全部已选退化。
 // 照片本身、可选因子、按钮样式两边完全一致，来自 uavScene / factorChips，
 // 所以改动一次两边同步，不会各自漂移。
 
@@ -186,7 +187,7 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
           active={active}
           onToggle={toggle}
           showSelection={withMeta}
-          onClear={analogy ? () => setActive([]) : undefined}
+          onClear={() => setActive([])}
         />
       </div>
 

@@ -537,6 +537,67 @@ input[type="range"]::-moz-range-thumb {
 }
 .feedback.good { color: var(--green); background: var(--green-soft); border-left-color: var(--green); font-style: normal; }
 .feedback.bad { color: var(--red); background: var(--red-soft); border-left-color: var(--red); font-style: normal; }
+.baseline-tradeoff {
+  padding: 16px;
+  background: #f7fbff;
+  border: 1px solid #cbd9e8;
+  border-radius: var(--radius-sm);
+}
+.baseline-controls,
+.baseline-metric-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.baseline-controls button,
+.baseline-metric-tabs button {
+  padding: 6px 11px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--ui-radius-pill);
+  background: var(--paper);
+  color: var(--slate-2);
+  cursor: pointer;
+}
+.baseline-controls button.active,
+.baseline-metric-tabs button.active {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+.baseline-chart {
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+.baseline-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.chart-axis { stroke: #8da5bd; stroke-width: 1.5; }
+.chart-grid { stroke: #dbe6f0; stroke-dasharray: 4 5; }
+.chart-title,
+.baseline-dot text { fill: var(--ink-2); font: 600 13px Arial, "Segoe UI", sans-serif; }
+.baseline-dot { cursor: pointer; }
+.baseline-dot circle { transition: r 160ms ease, opacity 160ms ease; }
+.baseline-dot:not(.selected) { opacity: 0.72; }
+.baseline-dot.selected circle { stroke: #183153; stroke-width: 3; }
+.baseline-detail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin-top: 12px;
+  color: var(--ink-2);
+}
+.baseline-detail strong { color: var(--ink); }
+.baseline-detail p { grid-column: 1 / -1; margin: 2px 0 0; }
+.baseline-disclaimer {
+  display: block;
+  margin-top: 10px;
+  color: var(--slate-2);
+  line-height: 1.5;
+}
 .chip-row {
   display: flex;
   justify-content: center;

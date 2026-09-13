@@ -204,6 +204,13 @@ export const tutorial: TutorialData = {
           desc: '论文报告 ImageWAM 在其模拟器与真实世界实验中优于所比较的标准 VLA 基线和竞争性 WAM，同时在相应对比设置下将 FLOPs 降至视频式 WAM 的约 1/6、延迟降至约 1/4。',
           componentId: 'example-slider',
         },
+        {
+          kind: 'module',
+          id: '5.2',
+          title: '可交互基线权衡：成功率、延迟与算力',
+          desc: '点击基线和分析维度，观察“高成功率、低延迟、低算力”之间的权衡。除 ImageWAM 的摘要级效率比例外，其余点位是定性示意，精确值应以论文统一实验表为准。',
+          componentId: 'baseline-tradeoff',
+        },
       ],
       insight: '在论文报告的实验设置中，减少未来重建开销并未阻止 ImageWAM 获得有竞争力的动作性能，同时带来计算与延迟收益；这些数字不应直接外推到所有任务和硬件。',
       formula: {

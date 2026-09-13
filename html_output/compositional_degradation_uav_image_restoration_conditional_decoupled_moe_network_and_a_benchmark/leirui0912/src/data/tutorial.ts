@@ -82,7 +82,7 @@ export const tutorial: TutorialData = {
         {
           kind: 'module',
           id: '2.1',
-          title: '多标签编码器',
+          title: '多标签退化编码',
           desc: '将8种原子退化类型编码为多热向量。点击开关选择不同退化组合，观察编码结果如何表示复杂的退化配置。',
           componentId: 'multi-label-encoder'
         }

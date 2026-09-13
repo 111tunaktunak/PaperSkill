@@ -1,162 +1,186 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { setupCanvas } from '../lib/canvasKit';
 import { WidgetProps } from './registry';
 import { markCanvasReady } from './canvasReady';
+import { FactorChips } from './factorChips';
+import { DEGRADATIONS, SW, SH, getDegraded, getScene } from './uavScene';
 
-// Degradation Inspector Widget
-// Allows users to explore different degradation types and their effects on images
+// 退化识别器：点选退化因子，照片当场变化。
+//
+// 同一个组件在页面里出现两次（第 1 章的类比卡与模块 1.1 各一次），
+// 两处刻意有一处差别 —— 模块槽额外用一行小字列出当前激活了哪些退化因子：
+//   moduleId === 'ana' -> 类比卡（AnalogyCard.tsx 固定传 "ana"）：只给照片，不加标注
+//   其余（模块 1.1）    -> 照片同款，下方用小字标出激活的因子
+// 照片本身、可选因子、按钮样式两边完全一致，来自 uavScene / factorChips，
+// 所以改动一次两边同步，不会各自漂移。
 
-const DEGRADATION_TYPES = [
-  { id: 'rain', name: '雨', color: '#3b82f6', icon: '🌧️' },
-  { id: 'snow', name: '雪', color: '#e2e8f0', icon: '❄️' },
-  { id: 'haze', name: '雾', color: '#94a3b8', icon: '🌫️' },
-  { id: 'lowlight', name: '低光', color: '#1e293b', icon: '🌙' },
-  { id: 'overexpose', name: '过曝', color: '#fbbf24', icon: '☀️' },
-  { id: 'blur', name: '模糊', color: '#a78bfa', icon: '🔍' },
-  { id: 'noise', name: '噪声', color: '#f87171', icon: '📺' },
-  { id: 'artifact', name: '伪影', color: '#fb923c', icon: '🖼️' }
-];
+const FONT = '"Segoe UI", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif';
 
-// 画布上退化标记条的透明度：半透明才不会盖住底下的影像
-const MARKER_ALPHA = 0.5;
+const SLATE = '#68778f';
+const SLATE2 = '#8b97ab';
+const LINE = '#d7deea';
+const INK = '#21324a';
 
-/** 标记条上的文字配色：因子色偏亮（雪、过曝）配深色字，偏暗（低光、噪声）配白字。 */
-function labelOn(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 150 ? '#21324a' : '#ffffff';
+// 照片按景物条带（620x248 ≈ 2.5:1）的原始比例摆放，不拉伸
+const PHOTO_W = 520;
+const PHOTO_H = Math.round((PHOTO_W * SH) / SW);
+const PHOTO_X = 12;
+const PHOTO_Y = 12;
+
+const W = PHOTO_W + PHOTO_X * 2;
+const CAP_Y = PHOTO_Y + PHOTO_H + 24; // 计数行
+const LEGEND_Y = CAP_Y + 22; // 小字图例首行
+const H_ANALOGY = CAP_Y + 14;
+const H_MODULE = LEGEND_Y + 16;
+
+const SWATCH = 9;
+const LEGEND_GAP = 16;
+
+/** 照片下方的计数行。 */
+function drawCount(ctx: CanvasRenderingContext2D, n: number) {
+  ctx.font = `500 12px ${FONT}`;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = n === 0 ? SLATE2 : SLATE;
+  ctx.fillText(n === 0 ? '尚未选择退化类型' : `激活退化: ${n}/8`, PHOTO_X, CAP_Y);
+}
+
+/**
+ * 小字列出当前激活的退化因子：一个色块 + 因子名。
+ * 与封面的开关用同一套因子色，便于把「点了哪个」和「照片里的变化」对上。
+ */
+function drawLegend(ctx: CanvasRenderingContext2D, active: string[]) {
+  if (!active.length) return;
+  ctx.font = `500 11px ${FONT}`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  let x = PHOTO_X;
+  for (const id of active) {
+    const d = DEGRADATIONS.find((k) => k.id === id);
+    if (!d) continue;
+    if (x > PHOTO_X) {
+      ctx.fillStyle = LINE;
+      ctx.fillText('·', x - LEGEND_GAP / 2 - 2, LEGEND_Y + SWATCH / 2);
+    }
+    ctx.fillStyle = d.color;
+    ctx.fillRect(x, LEGEND_Y, SWATCH, SWATCH);
+    ctx.strokeStyle = 'rgba(33,50,74,0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, LEGEND_Y + 0.5, SWATCH - 1, SWATCH - 1);
+
+    ctx.fillStyle = INK;
+    ctx.fillText(d.name, x + SWATCH + 5, LEGEND_Y + SWATCH / 2 + 0.5);
+    x += SWATCH + 5 + ctx.measureText(d.name).width + LEGEND_GAP;
+  }
+  ctx.textBaseline = 'alphabetic';
+}
+
+function paint(ctx: CanvasRenderingContext2D, active: string[], withLegend: boolean) {
+  const h = withLegend ? H_MODULE : H_ANALOGY;
+  ctx.clearRect(0, 0, W, h);
+
+  const photo = active.length ? getDegraded(active) : getScene();
+  ctx.drawImage(photo, 0, 0, SW, SH, PHOTO_X, PHOTO_Y, PHOTO_W, PHOTO_H);
+
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(PHOTO_X + 0.5, PHOTO_Y + 0.5, PHOTO_W - 1, PHOTO_H - 1);
+
+  drawCount(ctx, active.length);
+  if (withLegend) drawLegend(ctx, active);
 }
 
 export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleId }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [activeDegradations, setActiveDegradations] = useState<Set<string>>(new Set());
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const [active, setActive] = useState<string[]>([]);
+  const withLegend = moduleId !== 'ana';
 
-  const toggleDegradation = (id: string) => {
-    setActiveDegradations(prev => {
+  const toggle = (id: string) =>
+    setActive((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      // 固定按 DEGRADATIONS 顺序存放，保证渲染结果稳定、可复现
+      return DEGRADATIONS.filter((d) => next.has(d.id)).map((d) => d.id);
     });
-  };
 
+  // 挂载即出图：建背衬 → 绘制 → 淡入都在同一个 effect 里完成，
+  // 不依赖另一个 effect 先把 ctx 写进 ref，默认状态就不会停在空画布上。
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvasEl) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    markCanvasReady(canvas);
-
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // Clear canvas
-    ctx.fillStyle = '#f5f8f0';
-    ctx.fillRect(0, 0, w, h);
-
-    // Draw a simple photo frame
-    ctx.fillStyle = '#78716c';
-    ctx.fillRect(60, 40, 200, 160);
-    ctx.fillStyle = '#f5f8f0';
-    ctx.fillRect(65, 45, 190, 150);
-
-    // Draw a simple landscape
-    ctx.fillStyle = '#87ceeb';
-    ctx.fillRect(65, 45, 190, 80);
-    ctx.fillStyle = '#228b22';
-    ctx.fillRect(65, 100, 190, 95);
-
-    // Draw sun
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath();
-    ctx.arc(220, 70, 20, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw degradation markers
-    let y = 45;
-    activeDegradations.forEach(id => {
-      const deg = DEGRADATION_TYPES.find(d => d.id === id);
-      if (deg) {
-        ctx.fillStyle = deg.color;
-        ctx.globalAlpha = MARKER_ALPHA;
-        ctx.fillRect(65, y, 190, 20);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = labelOn(deg.color);
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${deg.icon} ${deg.name}`, 160, y + 15);
-        y += 25;
+    const h = withLegend ? H_MODULE : H_ANALOGY;
+    const dpr = window.devicePixelRatio || 1;
+    let ctx = ctxRef.current;
+    // 背衬尺寸与当前 dpr 不一致时才重建（首次挂载，或跨屏拖动导致 dpr 变化）。
+    // setupCanvas 会重置位图，所以重建之后必须紧接着重绘。
+    if (
+      !ctx ||
+      canvasEl.width !== Math.round(W * dpr) ||
+      canvasEl.height !== Math.round(h * dpr)
+    ) {
+      try {
+        ctx = setupCanvas(canvasEl, W, h);
+        // 跟随栏宽并限高：避免在窄列中被裁切、在宽列中被放大糊掉
+        canvasEl.style.width = '100%';
+        canvasEl.style.height = 'auto';
+        canvasEl.style.maxWidth = W + 'px';
+        canvasEl.style.margin = '0 auto';
+      } catch {
+        // 退化路径：拿不到 2D 上下文时按 1x 画，至少不留空白
+        const fallback = canvasEl.getContext('2d');
+        if (!fallback) return;
+        canvasEl.width = W;
+        canvasEl.height = h;
+        ctx = fallback;
       }
-    });
-
-    // Draw active count
-    ctx.fillStyle = '#21324a';
-    ctx.font = '14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`激活退化: ${activeDegradations.size}/8`, 160, 220);
-
-    // Draw feedback
-    const feedbackEl = document.getElementById(`feedback-${chapterId}-${moduleId}`);
-    if (feedbackEl) {
-      if (activeDegradations.size === 0) {
-        feedbackEl.textContent = '请选择至少一种退化类型';
-        feedbackEl.style.color = '#3b82f6';
-      } else if (activeDegradations.size === 1) {
-        feedbackEl.textContent = '单一退化：相对容易处理';
-        feedbackEl.style.color = '#22c55e';
-      } else if (activeDegradations.size <= 3) {
-        feedbackEl.textContent = '组合退化：需要专门的修复方法';
-        feedbackEl.style.color = '#f59e0b';
-      } else {
-        feedbackEl.textContent = '高阶组合退化：非常具有挑战性';
-        feedbackEl.style.color = '#ef4444';
-      }
+      ctxRef.current = ctx;
     }
-  }, [activeDegradations, chapterId, moduleId]);
+
+    paint(ctx, active, withLegend);
+
+    // components.css 里 canvas 默认 opacity:0，靠 .is-ready 淡入。
+    canvasEl.classList.add('is-ready');
+  }, [canvasEl, active, withLegend]);
+
+  const n = active.length;
+  let feedbackText: string;
+  let feedbackCls = '';
+  if (n === 0) {
+    feedbackText = '请至少选择一种退化类型';
+  } else if (n === 1) {
+    feedbackText = '单一退化：相对容易处理';
+  } else if (n <= 3) {
+    feedbackText = '组合退化：需要专门的修复方法';
+  } else {
+    feedbackText = '高阶组合退化：非常具有挑战性';
+    feedbackCls = 'bad';
+  }
 
   return (
     <div className="widget-container">
       <h3 className="widget-title">退化识别器</h3>
       <p className="widget-description">
-        点击选择不同的退化类型，观察它们对图像的影响
+        点击选择不同的退化类型，观察它们叠加后对图像的影响
       </p>
 
       <div className="widget-content">
         <canvas
-          ref={canvasRef}
-          width={320}
-          height={240}
-          className="widget-canvas"
+          ref={setCanvasEl}
+          id={`cv-${chapterId}-${moduleId}-deg`}
+          width={W}
+          height={withLegend ? H_MODULE : H_ANALOGY}
         />
 
-        <div className="controls">
-          <div className="degradation-grid">
-            {DEGRADATION_TYPES.map(deg => (
-              <button
-                key={deg.id}
-                className={`degradation-btn ${activeDegradations.has(deg.id) ? 'active' : ''}`}
-                onClick={() => toggleDegradation(deg.id)}
-                style={{
-                  borderColor: activeDegradations.has(deg.id) ? deg.color : '#d7deea',
-                  backgroundColor: activeDegradations.has(deg.id) ? `${deg.color}20` : 'transparent'
-                }}
-              >
-                <span className="deg-icon">{deg.icon}</span>
-                <span className="deg-name">{deg.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <FactorChips active={active} onToggle={toggle} />
       </div>
 
-      <div id={`feedback-${chapterId}-${moduleId}`} className="widget-feedback">
-        请选择至少一种退化类型
+      <div id={`feedback-${chapterId}-${moduleId}`} className={`feedback ${feedbackCls}`}>
+        {feedbackText}
       </div>
     </div>
   );
 };
+
+export default DegradationInspector;

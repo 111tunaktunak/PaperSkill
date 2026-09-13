@@ -5,24 +5,27 @@ import type { WidgetProps } from './registry';
 // 封面（Hero）专用：隐式统一修复 vs 显式因子级条件。
 //
 // 同一个组件被 Hero 两侧复用，用 moduleId 区分渲染方向（Hero.tsx 固定传 "old"/"new"）：
-//   moduleId === 'old' -> 隐式：多种退化被压缩进同一条整体条件，因子边界糊在一起
-//   其余（'new'）      -> 显式：FDPM 输出 {0,1}^8 多热掩码，每位独立、可逐项校正
+//   moduleId === 'old' -> 隐式：整体条件（全局逆滤波 + 混色色偏），退化越多样效果越差
+//   其余（'new'）      -> 显式：每个激活因子由对应分支独立校正，因子之间互不干扰
 //
-// 两侧共用同一组退化开关：状态保存在模块级 store，任一实例切换都会同步另一侧，
-// 这样「同一组退化、两种表示」的对照才成立（对应论文 Figure 2 与 Figure 4）。
+// 两侧渲染同一景物、同一组退化，只有修复范式不同，构成受控对照：
+//   上条 = 组合退化输入（两侧逐像素相同）
+//   下条 = 该范式的修复结果
 //
-// 色值取自 src/styles/paper.css 的 --paper-degradation-* 令牌，与第 1 章
-// 「退化识别器」保持同一套退化配色。
+// 8 种退化按论文语义作用在像素上：雨丝、雪点、大气散射、低照度、高光溢出、
+// 高斯模糊、传感器噪声、块状伪影。退化强度按「8 种全开时景物仍可辨认」标定，
+// 不引入论文未报告的数值指标（不编造 PSNR / SSIM）。
+//
+// 配色沿用 src/styles/paper.css 的 --paper-degradation-*，与第 1 章「退化识别器」同一套。
 
 const FONT = '"Segoe UI", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif';
-const MONO = '"Cascadia Code", Consolas, monospace';
 
-// 核心色板，语义遵循 tokens.css（red=失败/旧方法，green=成功/本文方法）
+// 语义遵循 tokens.css：red=失败/旧方法，green=成功/本文方法
 const INK = '#21324a';
 const SLATE = '#68778f';
 const SLATE2 = '#8b97ab';
 const LINE = '#d7deea';
-const PAPER2 = '#f6f8fc';
+const BLUE = '#27446e';
 const RED = '#c43f52';
 const GREEN = '#228d5c';
 
@@ -70,131 +73,494 @@ function toggleDegradation(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// 画布
+// 确定性伪随机：每次重建都从同一颗种子开始，切换某个退化不会让雨丝重新洗牌
 // ---------------------------------------------------------------------------
 
-const W = 440;
-const H = 250;
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
+function mulberry32(seed: number) {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
-/** 隐式：所有激活退化叠成一团，刻意模糊掉因子边界。 */
-function drawImplicit(ctx: CanvasRenderingContext2D, active: string[]) {
-  ctx.clearRect(0, 0, W, H);
-  ctx.textAlign = 'center';
+const clamp255 = (v: number) => (v < 0 ? 0 : v > 255 ? 255 : v);
 
-  ctx.fillStyle = SLATE;
-  ctx.font = `600 14px ${FONT}`;
-  ctx.fillText('多种退化压进同一条条件', W / 2, 24);
+// ---------------------------------------------------------------------------
+// 尺寸
+// ---------------------------------------------------------------------------
 
-  const cx = W / 2;
-  const cy = 108;
-  const R = 58;
+// 画布取窄高比例：Hero 栏宽约 340–470px，这样两条带接近 1:1 显示，
+// 缩小到栏宽时退化细节和 12px 标注都还看得清。
+const W = 330;
+const H = 322;
 
-  if (active.length === 0) {
-    ctx.setLineDash([6, 6]);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = LINE;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = SLATE2;
-    ctx.font = `500 14px ${FONT}`;
-    ctx.fillText('未激活退化', cx, cy + 5);
-  } else {
-    // 每个激活退化画一个大色盘，彼此几乎完全重叠、再整体模糊，
-    // 让颜色互相渗透 —— 这正是「因子边界不可辨」的直观表现。
-    ctx.filter = 'blur(10px)';
-    active.forEach((id, i) => {
-      const ang = (i / active.length) * Math.PI * 2 - Math.PI / 2;
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = colorOf(id).color;
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(ang) * 14, cy + Math.sin(ang) * 14, R - 8, 0, Math.PI * 2);
-      ctx.fill();
+// 离屏场景按 2 倍分辨率绘制：dpr=2 的屏上正好 1:1，dpr=1 时降采样，两种屏都清晰
+const SW = 620;
+const SH = 248;
+
+const PX = 10;
+const PW = 310;
+const PH = 124;
+const IN_Y = 23;
+const OUT_Y = 173;
+const LBL_IN_Y = 17;
+const LBL_OUT_Y = 167;
+const CAP_Y = 314;
+
+// ---------------------------------------------------------------------------
+// 景物：无人机航拍条带（农田、河流、道路、屋顶、树冠、车辆）
+// ---------------------------------------------------------------------------
+
+const FIELD = ['#5c7a3c', '#6b8a46', '#4e6b34', '#8a8f52', '#7b6f45', '#61764a'];
+const ROOF = ['#8a8f96', '#9c6b52', '#b0b4ba', '#7a8188', '#a8846a', '#6f747b'];
+const RIVER = '#4a6f8c';
+const BANK = '#9c9169';
+const ROAD = '#8d8f92';
+const TREE = '#39542f';
+
+// 河道中心线的三次贝塞尔控制点。绘制与「避开河面」判定共用同一组常量，
+// 避免两处各写一遍导致建筑/树冠落在水面上。
+const RV = [
+  { x: -15, y: 190 },
+  { x: SW * 0.28, y: 120 },
+  { x: SW * 0.55, y: 215 },
+  { x: SW + 15, y: 130 },
+];
+
+function riverPoints(): { x: number; y: number }[] {
+  const [p0, p1, p2, p3] = RV;
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= 220; i++) {
+    const t = i / 220;
+    const u = 1 - t;
+    pts.push({
+      x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+      y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
     });
-    ctx.globalAlpha = 1;
-    ctx.filter = 'none';
+  }
+  return pts;
+}
+
+const RIVER_PTS = riverPoints();
+
+function riverPath(g: CanvasRenderingContext2D) {
+  g.beginPath();
+  g.moveTo(RV[0].x, RV[0].y);
+  g.bezierCurveTo(RV[1].x, RV[1].y, RV[2].x, RV[2].y, RV[3].x, RV[3].y);
+}
+
+function nearRiver(x: number, y: number, dist: number) {
+  for (const p of RIVER_PTS) {
+    if (Math.abs(p.x - x) > dist) continue;
+    if (Math.abs(p.y - y) < dist) return true;
+  }
+  return false;
+}
+
+function buildScene(cv: HTMLCanvasElement) {
+  const g = cv.getContext('2d');
+  if (!g) return;
+  const rn = mulberry32(20260912);
+
+  g.fillStyle = '#66713f';
+  g.fillRect(0, 0, SW, SH);
+
+  // 田块
+  for (let i = 0; i < 24; i++) {
+    const w = 70 + rn() * 190;
+    const h = 50 + rn() * 130;
+    g.globalAlpha = 0.5 + rn() * 0.4;
+    g.fillStyle = FIELD[(rn() * FIELD.length) | 0];
+    g.fillRect(rn() * SW - w * 0.3, rn() * SH - h * 0.3, w, h);
+  }
+  g.globalAlpha = 1;
+
+  // 耕作行纹理
+  g.strokeStyle = 'rgba(0,0,0,0.07)';
+  g.lineWidth = 1.2;
+  for (let i = 0; i < 64; i++) {
+    const x = rn() * SW;
+    g.beginPath();
+    g.moveTo(x, 0);
+    g.lineTo(x + (rn() - 0.5) * 46, SH);
+    g.stroke();
   }
 
-  const n = active.length;
-  ctx.font = `700 15px ${FONT}`;
-  ctx.fillStyle = n >= 2 ? RED : SLATE;
-  ctx.fillText(n === 0 ? '—' : `${n} 种退化 → 1 条整体条件 c`, W / 2, 198);
+  // 河流：先河岸再水体
+  g.lineCap = 'round';
+  g.strokeStyle = BANK;
+  g.lineWidth = 40;
+  riverPath(g);
+  g.stroke();
+  g.strokeStyle = RIVER;
+  g.lineWidth = 30;
+  riverPath(g);
+  g.stroke();
 
-  ctx.font = `500 13px ${FONT}`;
-  ctx.fillStyle = SLATE2;
-  ctx.fillText('因子边界不可辨，无法逐项校正', W / 2, 224);
+  // 道路
+  g.strokeStyle = ROAD;
+  g.lineWidth = 24;
+  g.beginPath();
+  g.moveTo(-8, 56);
+  g.lineTo(SW + 8, 38);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(SW * 0.62, -12);
+  g.lineTo(SW * 0.6, SH + 12);
+  g.stroke();
+
+  g.strokeStyle = 'rgba(240,240,236,0.7)';
+  g.lineWidth = 1.8;
+  g.setLineDash([13, 13]);
+  g.beginPath();
+  g.moveTo(-8, 56);
+  g.lineTo(SW + 8, 38);
+  g.stroke();
+  g.setLineDash([]);
+
+  // 屋顶
+  for (let i = 0; i < 18; i++) {
+    const w = 26 + rn() * 40;
+    const h = 22 + rn() * 30;
+    const x = rn() * (SW - 70) + 12;
+    const y = rn() * (SH - h - 18) + 9;
+    if (nearRiver(x + w / 2, y + h / 2, 34)) continue;
+    g.fillStyle = 'rgba(30,35,25,0.28)';
+    g.fillRect(x + 3, y + 4, w, h);
+    g.fillStyle = ROOF[(rn() * ROOF.length) | 0];
+    g.fillRect(x, y, w, h);
+    g.strokeStyle = 'rgba(0,0,0,0.18)';
+    g.lineWidth = 1;
+    g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  }
+
+  // 树冠
+  for (let i = 0; i < 46; i++) {
+    const x = rn() * SW;
+    const y = rn() * SH;
+    const r = 5 + rn() * 9;
+    if (nearRiver(x, y, 26)) continue;
+    g.fillStyle = 'rgba(28,44,22,0.35)';
+    g.beginPath();
+    g.arc(x + 2, y + 3, r, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = TREE;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // 道路上的车辆
+  const cars: [number, number, string][] = [
+    [120, 52, '#e8e9ea'],
+    [300, 46, '#c9564a'],
+    [520, 42, '#e8e9ea'],
+    [SW * 0.607, 150, '#3f4a58'],
+    [SW * 0.613, 300, '#d8d2c0'],
+  ];
+  for (const [cx, cy, col] of cars) {
+    g.fillStyle = 'rgba(20,25,20,0.3)';
+    g.fillRect(cx + 1.5, cy + 2, 10, 5.5);
+    g.fillStyle = col;
+    g.fillRect(cx, cy, 10, 5.5);
+  }
 }
 
-/** 显式：8 个原子因子各自一格，边界清晰、状态可读。 */
-function drawExplicit(ctx: CanvasRenderingContext2D, active: string[]) {
-  ctx.clearRect(0, 0, W, H);
-  ctx.textAlign = 'center';
+// ---------------------------------------------------------------------------
+// 退化：把 8 种原子退化按论文语义作用到像素上
+// ---------------------------------------------------------------------------
 
-  ctx.fillStyle = SLATE;
-  ctx.font = `600 14px ${FONT}`;
-  ctx.fillText('每个因子独立编码', W / 2, 24);
+function drawRain(d: CanvasRenderingContext2D, rn: () => number) {
+  d.lineCap = 'round';
+  d.strokeStyle = 'rgba(205,220,240,0.55)';
+  d.lineWidth = 2;
+  for (let i = 0; i < 74; i++) {
+    const x = rn() * SW * 1.2 - SW * 0.1;
+    const y = rn() * SH;
+    const len = 18 + rn() * 28;
+    d.beginPath();
+    d.moveTo(x, y);
+    d.lineTo(x - len * 0.26, y + len);
+    d.stroke();
+  }
+  d.strokeStyle = 'rgba(238,246,255,0.72)';
+  d.lineWidth = 3;
+  for (let i = 0; i < 18; i++) {
+    const x = rn() * SW * 1.2 - SW * 0.1;
+    const y = rn() * SH;
+    const len = 28 + rn() * 32;
+    d.beginPath();
+    d.moveTo(x, y);
+    d.lineTo(x - len * 0.26, y + len);
+    d.stroke();
+  }
+}
 
-  const cols = 4;
-  const cw = 92;
-  const ch = 62;
-  const gapX = 8;
-  const gapY = 10;
-  const x0 = (W - (cols * cw + (cols - 1) * gapX)) / 2;
-  const y0 = 42;
+function drawSnow(d: CanvasRenderingContext2D, rn: () => number) {
+  d.fillStyle = 'rgba(255,255,255,0.8)';
+  for (let i = 0; i < 68; i++) {
+    d.beginPath();
+    d.arc(rn() * SW, rn() * SH, 1.6 + rn() * 1.8, 0, Math.PI * 2);
+    d.fill();
+  }
+  d.fillStyle = 'rgba(255,255,255,0.42)';
+  for (let i = 0; i < 12; i++) {
+    d.beginPath();
+    d.arc(rn() * SW, rn() * SH, 3.4 + rn() * 2.6, 0, Math.PI * 2);
+    d.fill();
+  }
+}
 
-  DEGRADATIONS.forEach((d, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = x0 + col * (cw + gapX);
-    const y = y0 + row * (ch + gapY);
-    const on = active.includes(d.id);
+function drawBlocks(d: CanvasRenderingContext2D, rn: () => number) {
+  for (let by = 0; by < SH; by += 8) {
+    for (let bx = 0; bx < SW; bx += 8) {
+      const a = rn() * 0.15;
+      if (a < 0.03) continue;
+      const v = 118 + (rn() * 24 - 12);
+      d.fillStyle = `rgba(${v | 0},${(v + 3) | 0},${(v + 10) | 0},${a.toFixed(3)})`;
+      d.fillRect(bx, by, 8, 8);
+    }
+  }
+  d.fillStyle = 'rgba(90,95,105,0.09)';
+  for (let i = 0; i < 10; i++) {
+    d.fillRect(0, (rn() * SH) | 0, SW, 2 + rn() * 3);
+  }
+}
 
-    roundRect(ctx, x, y, cw, ch, 8);
-    ctx.fillStyle = on ? d.color : PAPER2;
-    ctx.globalAlpha = on ? 0.22 : 1;
-    ctx.fill();
+function addNoise(d: CanvasRenderingContext2D, rn: () => number) {
+  const img = d.getImageData(0, 0, SW, SH);
+  const p = img.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const n = (rn() * 2 - 1) * 20;
+    p[i] = clamp255(p[i] + n);
+    p[i + 1] = clamp255(p[i + 1] + n * 0.95);
+    p[i + 2] = clamp255(p[i + 2] + n * 1.05);
+  }
+  d.putImageData(img, 0, 0);
+  for (let i = 0; i < 105; i++) {
+    d.fillStyle = rn() > 0.5 ? 'rgba(255,255,255,0.42)' : 'rgba(20,20,30,0.38)';
+    d.fillRect(rn() * SW, rn() * SH, 1.8, 1.8);
+  }
+}
+
+function buildDegraded(cv: HTMLCanvasElement, active: string[], clean: HTMLCanvasElement) {
+  const d = cv.getContext('2d');
+  if (!d) return;
+  const has = (id: string) => active.includes(id);
+  const rn = mulberry32(7717);
+
+  d.setTransform(1, 0, 0, 1, 0, 0);
+  d.clearRect(0, 0, SW, SH);
+
+  // 可用滤镜表达的退化：模糊、大气散射、低照度、高光溢出
+  const parts: string[] = [];
+  if (has('blur')) parts.push('blur(3.4px)');
+  if (has('haze')) parts.push('contrast(0.62)', 'brightness(1.10)', 'saturate(0.74)');
+  if (has('lowlight')) parts.push('brightness(0.42)', 'saturate(0.72)');
+  if (has('overexpose')) parts.push('brightness(1.38)', 'contrast(0.94)');
+  d.filter = parts.length ? parts.join(' ') : 'none';
+  d.drawImage(clean, 0, 0);
+  d.filter = 'none';
+
+  // 需要叠加的退化层
+  if (has('haze')) {
+    d.fillStyle = 'rgba(216,226,238,0.34)';
+    d.fillRect(0, 0, SW, SH);
+  }
+  if (has('lowlight')) {
+    d.fillStyle = 'rgba(10,16,32,0.20)';
+    d.fillRect(0, 0, SW, SH);
+  }
+  if (has('rain')) drawRain(d, rn);
+  if (has('snow')) drawSnow(d, rn);
+  if (has('artifact')) drawBlocks(d, rn);
+  if (has('noise')) addNoise(d, rn);
+}
+
+// ---------------------------------------------------------------------------
+// 离屏画布（两个 Hero 实例共用一份，避免重复构建）
+// ---------------------------------------------------------------------------
+
+let cleanCv: HTMLCanvasElement | null = null;
+let degCv: HTMLCanvasElement | null = null;
+let builtVersion = -1;
+let builtKey = '';
+
+function ensureScene(): HTMLCanvasElement | null {
+  if (!cleanCv || !degCv) {
+    cleanCv = document.createElement('canvas');
+    cleanCv.width = SW;
+    cleanCv.height = SH;
+    buildScene(cleanCv);
+    degCv = document.createElement('canvas');
+    degCv.width = SW;
+    degCv.height = SH;
+    builtVersion = -1;
+  }
+  return cleanCv;
+}
+
+function ensureDegraded(active: string[], version: number): HTMLCanvasElement | null {
+  const clean = ensureScene();
+  if (!clean || !degCv) return null;
+  const key = active.join(',');
+  if (version === builtVersion && key === builtKey) return degCv;
+  buildDegraded(degCv, active, clean);
+  builtVersion = version;
+  builtKey = key;
+  return degCv;
+}
+
+/** 激活因子颜色的均值 —— 隐式条件下因子被混在一起，表现为混色色偏。 */
+function mixColor(active: string[]) {
+  if (!active.length) return 'rgb(128,128,128)';
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  for (const id of active) {
+    const hex = colorOf(id).color;
+    r += parseInt(hex.slice(1, 3), 16);
+    g += parseInt(hex.slice(3, 5), 16);
+    b += parseInt(hex.slice(5, 7), 16);
+  }
+  const n = active.length;
+  r /= n;
+  g /= n;
+  b /= n;
+  const m = (r + g + b) / 3;
+  const sat = 1.5;
+  return `rgb(${clamp255(m + (r - m) * sat) | 0},${clamp255(m + (g - m) * sat) | 0},${
+    clamp255(m + (b - m) * sat) | 0
+  })`;
+}
+
+// ---------------------------------------------------------------------------
+// 绘制
+// ---------------------------------------------------------------------------
+
+function frame(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+}
+
+/** 隐式：单条整体条件做全局校正 —— 只能反掉「平均」退化，并引入混色色偏。 */
+function drawImplicit(
+  ctx: CanvasRenderingContext2D,
+  deg: HTMLCanvasElement,
+  active: string[]
+) {
+  const n = active.length;
+  const over = n === 0 ? 0 : 0.06 + n * 0.075;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(PX, OUT_Y, PW, PH);
+  ctx.clip();
+
+  ctx.filter =
+    n === 0
+      ? 'none'
+      : `brightness(${(1 + over * 0.55).toFixed(3)}) contrast(${(1 - over * 0.36).toFixed(
+          3
+        )}) saturate(${(1 + over * 0.34).toFixed(3)})`;
+  ctx.drawImage(deg, 0, 0, SW, SH, PX, OUT_Y, PW, PH);
+  ctx.filter = 'none';
+
+  if (n > 0) {
+    const mix = mixColor(active);
+    const rn = mulberry32(4242);
+
+    // 因子互相渗透 → 混色色偏
+    ctx.globalAlpha = Math.min(0.34, n * 0.042);
+    ctx.fillStyle = mix;
+    ctx.fillRect(PX, OUT_Y, PW, PH);
     ctx.globalAlpha = 1;
 
-    ctx.lineWidth = on ? 2.5 : 1.5;
-    ctx.strokeStyle = on ? d.color : LINE;
-    ctx.stroke();
+    // 全局校正无法逐项去除的残余退化
+    ctx.strokeStyle = mix;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
+    const streaks = Math.min(40, 6 + n * 4);
+    for (let i = 0; i < streaks; i++) {
+      const sx = PX + rn() * PW;
+      const sy = OUT_Y + rn() * PH;
+      const len = 7 + rn() * 15;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx - len * 0.26, sy + len);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
 
-    ctx.fillStyle = on ? INK : SLATE2;
-    ctx.font = `${on ? 700 : 500} 15px ${FONT}`;
-    ctx.fillText(d.name, x + cw / 2, y + 31);
+    // 均匀灰雾
+    ctx.fillStyle = `rgba(148,160,178,${Math.min(0.2, n * 0.024).toFixed(3)})`;
+    ctx.fillRect(PX, OUT_Y, PW, PH);
+  }
 
-    // 多热掩码的该位取值
-    ctx.font = `600 12px ${MONO}`;
-    ctx.fillStyle = on ? GREEN : SLATE2;
-    ctx.fillText(on ? '1' : '0', x + cw / 2, y + 50);
-  });
+  ctx.restore();
+  frame(ctx, PX, OUT_Y, PW, PH);
+}
 
+/** 显式：每个激活因子由对应分支独立校正，因子之间互不干扰。 */
+function drawExplicit(ctx: CanvasRenderingContext2D, clean: HTMLCanvasElement) {
+  ctx.drawImage(clean, 0, 0, SW, SH, PX, OUT_Y, PW, PH);
+  frame(ctx, PX, OUT_Y, PW, PH);
+}
+
+function draw(
+  ctx: CanvasRenderingContext2D,
+  implicit: boolean,
+  active: string[],
+  deg: HTMLCanvasElement | null,
+  clean: HTMLCanvasElement | null
+) {
   const n = active.length;
-  ctx.font = `700 15px ${FONT}`;
-  ctx.fillStyle = n === 0 ? SLATE : GREEN;
-  ctx.fillText(n === 0 ? '—' : `${n} 种退化 → ${n} 位独立因子 m̂`, W / 2, 198);
+  ctx.clearRect(0, 0, W, H);
+  ctx.textAlign = 'left';
 
-  ctx.font = `500 13px ${FONT}`;
   ctx.fillStyle = SLATE2;
-  ctx.fillText('m̂ ∈ {0,1}⁸，每位互不干扰', W / 2, 224);
+  ctx.font = `500 12px ${FONT}`;
+  ctx.fillText(n === 0 ? '输入 · 原始图像' : `输入 · ${n} 种退化同时作用`, PX, LBL_IN_Y);
+
+  if (deg) ctx.drawImage(deg, 0, 0, SW, SH, PX, IN_Y, PW, PH);
+  frame(ctx, PX, IN_Y, PW, PH);
+
+  ctx.fillStyle = implicit ? (n >= 2 ? RED : SLATE) : BLUE;
+  ctx.font = `600 13px ${FONT}`;
+  ctx.fillText(
+    implicit ? '隐式统一修复 · 单条整体条件' : 'DAME-Net · 显式因子级条件',
+    PX,
+    LBL_OUT_Y
+  );
+
+  if (implicit) {
+    if (deg) drawImplicit(ctx, deg, active);
+  } else if (clean) {
+    drawExplicit(ctx, clean);
+  }
+
+  ctx.font = `500 12px ${FONT}`;
+  if (implicit) {
+    ctx.fillStyle = n >= 2 ? RED : SLATE2;
+    ctx.fillText(
+      n === 0
+        ? '尚未施加退化'
+        : n === 1
+        ? '单因子时勉强对应，残差较轻'
+        : '整体校正只反掉「平均」退化 → 混色色偏 + 残余',
+      PX,
+      CAP_Y
+    );
+  } else {
+    ctx.fillStyle = n === 0 ? SLATE2 : GREEN;
+    ctx.fillText(n === 0 ? '尚未施加退化' : '各因子独立校正，互不干扰', PX, CAP_Y);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -209,7 +575,7 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
   const implicit = moduleId === 'old';
 
   // 画布只在挂载时初始化一次。setupCanvas 会写入固定像素宽度，
-  // 这里覆盖成 100% 让画布跟随 Hero 列宽缩放（否则在窄列中会被裁切）。
+  // 这里改成跟随栏宽并限高，避免在窄列中被裁切、在宽列中被放大糊掉。
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -217,6 +583,8 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
       const ctx = setupCanvas(canvas, W, H);
       canvas.style.width = '100%';
       canvas.style.height = 'auto';
+      canvas.style.maxWidth = W + 'px';
+      canvas.style.margin = '0 auto';
       ctxRef.current = ctx;
     } catch {
       ctxRef.current = null;
@@ -226,24 +594,24 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
   useEffect(() => {
     const ctx = ctxRef.current;
     if (!ctx) return;
-    if (implicit) drawImplicit(ctx, active);
-    else drawExplicit(ctx, active);
-  }, [implicit, active]);
+    const deg = ensureDegraded(active, snap.version);
+    draw(ctx, implicit, active, deg, cleanCv);
+  }, [implicit, active, snap.version]);
 
   const n = active.length;
   let feedbackText: string;
   let feedbackCls = '';
   if (n === 0) {
-    feedbackText = '请至少选择一种退化，再对比两侧的表示方式。';
+    feedbackText = '请至少选择一种退化，再对比两侧的修复结果。';
   } else if (implicit) {
     if (n === 1) {
-      feedbackText = '只有 1 种退化时，整体条件还能勉强对应到具体因子。';
+      feedbackText = '只激活 1 种退化时，整体条件还能勉强对上具体因子，残差较轻。';
     } else {
-      feedbackText = `${n} 种退化被压进同一条条件：因子互相渗透，无法逐项校正。`;
+      feedbackText = `${n} 种退化被压进同一条整体条件：全局校正只能反掉「平均」退化，留下混色色偏与残余退化。`;
       feedbackCls = 'bad';
     }
   } else {
-    feedbackText = `${n} 个因子各自占一位、边界清晰，修复时可逐项选择性校正。`;
+    feedbackText = `${n} 项退化分别由对应分支校正，因子之间互不干扰。`;
     feedbackCls = 'good';
   }
 
@@ -262,9 +630,7 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
               aria-pressed={on}
               onClick={() => toggleDegradation(d.id)}
               style={
-                on
-                  ? { background: `${d.color}22`, borderColor: d.color, color: INK }
-                  : undefined
+                on ? { background: `${d.color}22`, borderColor: d.color, color: INK } : undefined
               }
             >
               <span

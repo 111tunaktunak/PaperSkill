@@ -53,7 +53,7 @@ export const tutorial: TutorialData = {
           kind: 'module',
           id: '1.1',
           title: '退化识别器',
-          desc: '通过滑块控制不同的退化类型和强度，观察它们对图像的影响。红色标记表示检测到的退化类型，帮助理解组合退化的复杂性。',
+          desc: '点击选择不同的退化类型，观察它们叠加后对图像的影响。画布会标出当前激活的退化因子与数量，帮助理解组合退化的复杂性。',
           figure: fig('wrong_detect.png'),
           componentId: 'degradation-inspector'
         }

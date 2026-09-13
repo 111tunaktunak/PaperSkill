@@ -16,10 +16,20 @@ const DEGRADATION_TYPES = [
   { id: 'artifact', name: '伪影', color: '#fb923c', icon: '🖼️' }
 ];
 
+// 画布上退化标记条的透明度：半透明才不会盖住底下的影像
+const MARKER_ALPHA = 0.5;
+
+/** 标记条上的文字配色：因子色偏亮（雪、过曝）配深色字，偏暗（低光、噪声）配白字。 */
+function labelOn(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 150 ? '#21324a' : '#ffffff';
+}
+
 export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleId }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [activeDegradations, setActiveDegradations] = useState<Set<string>>(new Set());
-  const [intensity, setIntensity] = useState(0.5);
 
   const toggleDegradation = (id: string) => {
     setActiveDegradations(prev => {
@@ -73,10 +83,10 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
       const deg = DEGRADATION_TYPES.find(d => d.id === id);
       if (deg) {
         ctx.fillStyle = deg.color;
-        ctx.globalAlpha = intensity;
+        ctx.globalAlpha = MARKER_ALPHA;
         ctx.fillRect(65, y, 190, 20);
         ctx.globalAlpha = 1;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = labelOn(deg.color);
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`${deg.icon} ${deg.name}`, 160, y + 15);
@@ -107,7 +117,7 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
         feedbackEl.style.color = '#ef4444';
       }
     }
-  }, [activeDegradations, intensity, chapterId, moduleId]);
+  }, [activeDegradations, chapterId, moduleId]);
 
   return (
     <div className="widget-container">
@@ -140,18 +150,6 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
                 <span className="deg-name">{deg.name}</span>
               </button>
             ))}
-          </div>
-
-          <div className="slider-control">
-            <label>退化强度: {Math.round(intensity * 100)}%</label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={intensity}
-              onChange={(e) => setIntensity(parseFloat(e.target.value))}
-            />
           </div>
         </div>
       </div>

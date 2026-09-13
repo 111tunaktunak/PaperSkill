@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExampleSlider } from './exampleSlider';
+import { CoreInsightAnimation } from './coreInsightAnimation';
 
 // Widget registry: maps a `componentId` (referenced from src/data/tutorial.ts) to a
 // React component. The generator ADDS entries here for every paper-specific canvas
@@ -20,3 +21,4 @@ export const widgetRegistry: Record<string, React.FC<WidgetProps>> = {};
 
 // Example kept so the scaffold runs out-of-the-box. Replace/extend as needed.
 widgetRegistry['example-slider'] = ExampleSlider;
+widgetRegistry['core-insight'] = CoreInsightAnimation;

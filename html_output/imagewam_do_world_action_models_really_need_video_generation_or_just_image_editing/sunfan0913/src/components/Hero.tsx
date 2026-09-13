@@ -31,6 +31,16 @@ export function Hero({
           ))}
         </div>
 
+        <div className="hero-insight-demo">
+          <div className="hero-insight-heading">
+            <strong>核心洞见：世界模型不一定要生成完整未来画面</strong>
+            <span>点击按钮暂停或继续观察“变化特征 → 动作”的过程</span>
+          </div>
+          {widgetRegistry['core-insight'] ? (
+            React.createElement(widgetRegistry['core-insight'], { chapterId: 'hero', moduleId: 'core-insight' })
+          ) : null}
+        </div>
+
         <div className="hero-compare">
           <div className="bg-side old">
             <div className="bg-side-head">传统方法</div>

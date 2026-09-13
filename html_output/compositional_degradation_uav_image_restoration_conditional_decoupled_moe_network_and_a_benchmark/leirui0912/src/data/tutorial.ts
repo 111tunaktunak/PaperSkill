@@ -287,38 +287,38 @@ export const tutorial: TutorialData = {
       badgeLabel: '训练',
       bridge: 'DAME-Net采用两阶段训练策略：先训练FDPM退化感知模块，再训练CDMM修复模块。',
       analogy: {
-        title: '调整编辑参数',
-        text: '就像摄影师调整编辑软件的各项参数以获得最佳效果一样，训练过程优化多个损失函数。',
+        title: '两条损失，先后各训一遍',
+        text: '就像先把「看退化」这一关单独练熟、封起来，再练「修退化」这一关：感知模型先用式(7) 训到收敛就冻结，后面整个修复训练都不再动它；修复网络再用式(16) 训。两条损失不是合成一条一起调。',
         componentId: 'training-monitor'
       },
       modules: [
         {
           kind: 'module',
           id: '7.1',
-          title: '训练监控器',
-          desc: '展示两阶段训练过程和损失变化。步进查看训练阶段，观察损失如何收敛。',
+          title: '损失分解器',
+          desc: '式(16) 的 L_R 由三项组成，三项管的不是同一批像素。关掉任意一项，看缺的是哪一块监督。',
           componentId: 'training-monitor'
         }
       ],
-      insight: '两阶段训练：Stage I训练FDPM（CLIP视觉编码器+多标签头），Stage II冻结FDPM，训练CDMM修复网络。',
+      insight: '论文只写了两阶段：Stage I 用式(7) L_P = λ_align·L_align + λ_cls·L_cls（0.1 / 0.9）训练感知模型，收敛后冻结；Stage II 用式(16) L_R = ‖ŷ − y‖₁ + λ_f·L_freq + λ_p·L_base（0.1 / 0.1）训练修复网络。L_freq 是挖掉短边 0.2 的低频中心方块之后的掩码 FFT 幅度损失，L_base 监督基座分支逼近引导滤波平滑目标 y_base = GuidedFilter(y, y; r = 15, ε = 10⁻³)。',
       formula: {
         lead: '两个阶段各有一条损失（式 7 / 式 16），不是合成的一条',
         unicode:
           'L_P = λ_align·L_align + λ_cls·L_cls（Stage I）<br>' +
           'L_R = ‖ŷ − y‖₁ + λ_f·L_freq + λ_p·L_base（Stage II）',
         symbols: [
-          { sym: 'L_P', desc: '感知阶段损失：Stage I 用它训练 FDPM，收敛后冻结（式 7）' },
+          { sym: 'L_P', desc: '感知阶段损失：Stage I 用它训练感知模型 P，收敛后冻结（式 7）' },
           { sym: 'L_R', desc: '修复阶段损失：Stage II 用它训练修复网络（式 16）' },
           { sym: 'L_align', desc: '标签相似性引导的跨模态软对齐损失（λ_align = 0.1）' },
           { sym: 'L_cls', desc: '多标签 BCE 分类损失（λ_cls = 0.9）' },
-          { sym: 'L_freq', desc: '掩码 FFT 幅度损失（λ_f = 0.1）' },
-          { sym: 'L_base', desc: '低频基座分支损失，监督目标是引导滤波平滑后的 y_base（λ_p = 0.1）' }
+          { sym: 'L_freq', desc: '掩码 FFT 幅度 L1 损失，先挖掉短边 0.2 的低频中心方块，只监督中高频（λ_f = 0.1）' },
+          { sym: 'L_base', desc: '基座分支损失，监督目标是引导滤波平滑后的 y_base = GuidedFilter(y, y; r = 15, ε = 10⁻³)（λ_p = 0.1）' }
         ]
       },
       takeaways: [
-        { icon: '🎯', title: '两阶段训练', desc: '先训练FDPM，再训练CDMM修复网络' },
-        { icon: '🔧', title: '多损失协同', desc: '多个损失函数协同优化不同方面' },
-        { icon: '✨', title: '掩码增强', desc: '掩码过载增强减少对完美掩码的依赖' }
+        { icon: '🎯', title: '两阶段训练', desc: '感知模型先用式(7) 训到收敛并冻结，修复网络再用式(16) 训' },
+        { icon: '🔧', title: '三项损失', desc: '整图 L1 保整体、掩码频率 L1 管中高频、基座 L1 管粗光照；表 V：去掉频率损失掉 0.72 dB（quad 掉 2.49）' },
+        { icon: '✨', title: '掩码过载增强', desc: '以 0.05 的概率给「只含雨或只含雪」的样本随机点亮一个全局位' }
       ],
     },
     // Chapter 8: 架构创新

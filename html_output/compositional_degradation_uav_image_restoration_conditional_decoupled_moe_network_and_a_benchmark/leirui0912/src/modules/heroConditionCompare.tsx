@@ -5,7 +5,7 @@ import type { WidgetProps } from './registry';
 // 封面（Hero）专用：隐式统一修复 vs 显式因子级条件。
 //
 // 同一个组件被 Hero 两侧复用，用 moduleId 区分渲染方向（Hero.tsx 固定传 "old"/"new"）：
-//   moduleId === 'old' -> 隐式：整体条件（全局逆滤波 + 混色色偏），退化越多样效果越差
+//   moduleId === 'old' -> 隐式：整体条件（全局校正只反掉一部分退化），因子越多反掉得越少
 //   其余（'new'）      -> 显式：每个激活因子由对应分支独立校正，因子之间互不干扰
 //
 // 两侧渲染同一景物、同一组退化，只有修复范式不同，构成受控对照：
@@ -466,45 +466,55 @@ function frame(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 }
 
-/** 隐式：单条整体条件做全局校正 —— 只能反掉「平均」退化，并引入混色色偏。 */
+/**
+ * 隐式：单条整体条件做全局校正。
+ *
+ * 它并不是「没修」——统一条件确实能反掉一部分退化，只是反掉的比例随因子数
+ * 增加迅速下降，反不掉的那部分就是残差。所以结果应当：
+ *   · 明显好于左侧的退化输入（不能看起来没处理过）；
+ *   · 又明显差于右侧的显式因子级校正（雨丝、雾感仍有残留，且带混色色偏）。
+ *
+ * 实现上用「叠上 recover 份干净影像」等价表达「反掉 recover 比例的退化」：
+ * 雨丝、雾感、噪声按同一比例一起褪去，剩下的正是统一条件对不上的那部分。
+ */
 function drawImplicit(
   ctx: CanvasRenderingContext2D,
   deg: HTMLCanvasElement,
+  clean: HTMLCanvasElement,
   active: string[]
 ) {
   const n = active.length;
-  const over = n === 0 ? 0 : 0.06 + n * 0.075;
 
   ctx.save();
   ctx.beginPath();
   ctx.rect(PX, OUT_Y, PW, PH);
   ctx.clip();
 
-  ctx.filter =
-    n === 0
-      ? 'none'
-      : `brightness(${(1 + over * 0.55).toFixed(3)}) contrast(${(1 - over * 0.36).toFixed(
-          3
-        )}) saturate(${(1 + over * 0.34).toFixed(3)})`;
   ctx.drawImage(deg, 0, 0, SW, SH, PX, OUT_Y, PW, PH);
-  ctx.filter = 'none';
 
   if (n > 0) {
-    const mix = mixColor(active);
-    const rn = mulberry32(4242);
+    // 下界 0.30 保证「确实修掉了一些」，上界 0.80 保证「没修干净」：
+    // 结果既不会与退化输入完全相同，也不会追平右侧。
+    const recover = Math.max(0.3, 0.8 - (n - 1) * 0.072);
 
-    // 因子互相渗透 → 混色色偏
-    ctx.globalAlpha = Math.min(0.34, n * 0.042);
+    ctx.globalAlpha = recover;
+    ctx.drawImage(clean, 0, 0, SW, SH, PX, OUT_Y, PW, PH);
+    ctx.globalAlpha = 1;
+
+    // 多个因子被压进同一条条件 → 互相渗透的混色色偏
+    const mix = mixColor(active);
+    ctx.globalAlpha = Math.min(0.22, n * 0.028);
     ctx.fillStyle = mix;
     ctx.fillRect(PX, OUT_Y, PW, PH);
     ctx.globalAlpha = 1;
 
-    // 全局校正无法逐项去除的残余退化
+    // 全局校正无法逐项去除的残余
+    const rn = mulberry32(4242);
     ctx.strokeStyle = mix;
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = 0.22;
     ctx.lineWidth = 1.2;
     ctx.lineCap = 'round';
-    const streaks = Math.min(40, 6 + n * 4);
+    const streaks = Math.min(24, 3 + n * 3);
     for (let i = 0; i < streaks; i++) {
       const sx = PX + rn() * PW;
       const sy = OUT_Y + rn() * PH;
@@ -515,10 +525,6 @@ function drawImplicit(
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
-
-    // 均匀灰雾
-    ctx.fillStyle = `rgba(148,160,178,${Math.min(0.2, n * 0.024).toFixed(3)})`;
-    ctx.fillRect(PX, OUT_Y, PW, PH);
   }
 
   ctx.restore();
@@ -558,7 +564,7 @@ function draw(
   );
 
   if (implicit) {
-    if (deg) drawImplicit(ctx, deg, active);
+    if (deg && clean) drawImplicit(ctx, deg, clean, active);
   } else if (clean) {
     drawExplicit(ctx, clean);
   }
@@ -571,7 +577,7 @@ function draw(
         ? '尚未施加退化'
         : n === 1
         ? '单因子时勉强对应，残差较轻'
-        : '整体校正只反掉「平均」退化 → 混色色偏 + 残余',
+        : '整体校正只反掉一部分退化 → 混色色偏 + 残余',
       PX,
       CAP_Y
     );
@@ -641,7 +647,7 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
     if (n === 1) {
       feedbackText = '只激活 1 种退化时，整体条件还能勉强对上具体因子，残差较轻。';
     } else {
-      feedbackText = `${n} 种退化被压进同一条整体条件：全局校正只能反掉「平均」退化，留下混色色偏与残余退化。`;
+      feedbackText = `${n} 种退化被压进同一条整体条件：全局校正只反掉一部分，因子越多反掉得越少，留下混色色偏与残余退化。`;
       feedbackCls = 'bad';
     }
   } else {

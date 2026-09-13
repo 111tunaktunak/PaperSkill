@@ -11,7 +11,9 @@ import { DEGRADATIONS } from './uavScene';
 //        渲染出来就是个没样式的默认按钮，所以这里换成 .chip。
 //   模块 3.1                    -> 动画。8 个因子点从输入出发：左路汇成一团
 //        （一个纠缠的整体条件 + 因子间干扰），右路逐个落到多热掩码 m̂ 的位上，
-//        再经 FDPM → CDMM 得到按因子各自校正的结果。挂载即播一次，可重播。
+//        再经 FDPM → CDMM 得到按因子各自校正的结果。挂载即播一次；
+//        「下一步」把动画推到下一段的终点并停在那里（播完之后按钮变成
+//        「分步重看」，按一下回到第一步重新分步走），「重新播放」从头完整播一遍。
 //
 // 两处共用的东西：uavScene 的 8 种因子（名称与配色）、.chip 按钮、.feedback 反馈行。
 
@@ -31,10 +33,22 @@ const H_ANA = 220;
 const W_MOD = 560;
 const H_MOD = 340;
 
-// 动画分四段：出现 → 分岔 → 掩码 → 结果
-const P_TRAVEL = [0.28, 0.58] as const;
+// 动画分四段：出现 → 分岔 → 掩码 → 结果。四段的终点即「下一步」的停靠点，
+// 每个停靠点上都只看得见这一段的东西（下一段的元素还没开始画）。
+const P_TRAVEL = [0.25, 0.55] as const;
 const P_MASK = [0.58, 0.8] as const;
 const P_RESULT = [0.8, 1] as const;
+
+// 每段的终点。「下一步」就是停到下一个终点上，最后一步之后回到第一步重走。
+const STOPS = [P_TRAVEL[0], P_TRAVEL[1], P_MASK[1], 1];
+
+// 反馈文案与四个停靠点一一对应：停在哪里就说这一段画了什么（最后一段带 good）。
+const STOP_MSGS: { text: string; cls: string }[] = [
+  { text: '输入：同一张图上叠了多种退化因子', cls: '' },
+  { text: '两条路：全压进一个条件，还是每个因子各留一份', cls: '' },
+  { text: '左侧因子被搅成一团、互相干扰；右侧 FDPM 给出多热掩码 m̂', cls: '' },
+  { text: '左侧修好一个可能弄坏另一个；右侧 CDMM 按掩码让对应专家各自校正', cls: 'good' }
+];
 
 const STEP = 0.01; // 每 16ms 推进一格，约 1.6s 播完
 const TICK_MS = 16;
@@ -225,7 +239,9 @@ function paintAnimation(ctx: CanvasRenderingContext2D, t: number) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
-  const appear = seg(t, 0, 0.22);
+  // 出现段收在 0.25 之前，第一个停靠点看到的就是「输入已就位」的干净状态
+  const stagger = (i: number) => seg(t, i * 0.012, i * 0.012 + 0.1);
+  const appear = seg(t, 0, 0.16);
   ctx.globalAlpha = appear;
   ctx.fillStyle = SLATE;
   ctx.font = `11px ${FONT}`;
@@ -241,14 +257,14 @@ function paintAnimation(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillStyle = SLATE;
   ctx.font = `9px ${FONT}`;
   DEGRADATIONS.forEach((d, i) => {
-    ctx.globalAlpha = appear * seg(t, i * 0.02, i * 0.02 + 0.12);
+    ctx.globalAlpha = stagger(i);
     ctx.fillText(d.name, xL(i), IN_Y + 18);
     ctx.fillText(d.name, xR(i), IN_Y + 18);
     ctx.globalAlpha = 1;
   });
 
   // 两条路的标题
-  ctx.globalAlpha = seg(t, 0.1, 0.3);
+  ctx.globalAlpha = seg(t, 0.05, 0.25);
   ctx.fillStyle = RED;
   ctx.font = `bold 12px ${FONT}`;
   ctx.fillText('隐式表示（旧方法）', 140, 112);
@@ -295,10 +311,10 @@ function paintAnimation(ctx: CanvasRenderingContext2D, t: number) {
     const to = edge(i);
     const x = xL(i) + (to.x - xL(i)) * travel;
     const y = IN_Y + (to.y - IN_Y) * travel;
-    dot(ctx, x, y, 7 - travel, d.color, seg(t, i * 0.02, i * 0.02 + 0.12));
+    dot(ctx, x, y, 7 - travel, d.color, stagger(i));
   });
 
-  const blobLabel = seg(t, 0.5, 0.68);
+  const blobLabel = seg(t, 0.55, 0.66);
   if (blobLabel > 0) {
     ctx.globalAlpha = blobLabel;
     ctx.fillStyle = INK;
@@ -308,7 +324,7 @@ function paintAnimation(ctx: CanvasRenderingContext2D, t: number) {
     ctx.globalAlpha = 1;
   }
 
-  const interfere = seg(t, 0.6, 0.72);
+  const interfere = seg(t, 0.62, 0.74);
   if (interfere > 0) {
     ctx.globalAlpha = interfere;
     ctx.strokeStyle = RED;
@@ -341,13 +357,13 @@ function paintAnimation(ctx: CanvasRenderingContext2D, t: number) {
 
   // ---------------- 右：逐个保留 ----------------
   // 因子点先落到 FDPM 上沿，随后被感知模块吸收（淡出），改由掩码的位接手
-  const absorbed = seg(t, P_MASK[0], P_MASK[0] + 0.08);
+  const absorbed = seg(t, P_MASK[0], P_MASK[0] + 0.07);
   DEGRADATIONS.forEach((d, i) => {
     const y = IN_Y + (124 - IN_Y) * travel;
-    dot(ctx, xR(i), y, 7 - travel, d.color, seg(t, i * 0.02, i * 0.02 + 0.12) * (1 - absorbed));
+    dot(ctx, xR(i), y, 7 - travel, d.color, stagger(i) * (1 - absorbed));
   });
 
-  const fdpmIn = seg(t, 0.36, 0.52);
+  const fdpmIn = seg(t, 0.42, 0.58);
   ctx.globalAlpha = fdpmIn;
   box(ctx, 300, 132, 240, 32, GREEN, 0.1 + 0.1 * absorbed, 'FDPM：逐因子感知退化', INK, 10);
   ctx.globalAlpha = 1;
@@ -359,24 +375,27 @@ function paintAnimation(ctx: CanvasRenderingContext2D, t: number) {
   const BIT = 22;
   const BX0 = 304;
   const bitOn = (i: number) => t > P_MASK[0] + 0.02 + i * 0.022;
-  DEGRADATIONS.forEach((_, i) => {
-    const x = BX0 + i * (BIT + 8);
-    const on = bitOn(i) && flow > 0;
-    ctx.fillStyle = on ? GREEN : '#eef2f6';
-    ctx.fillRect(x, 178, BIT, BIT);
-    ctx.strokeStyle = on ? GREEN : LINE;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, 178.5, BIT - 1, BIT - 1);
-    ctx.fillStyle = on ? '#ffffff' : SLATE;
-    ctx.font = `bold 12px ${FONT}`;
-    ctx.fillText(on ? '1' : '0', x + BIT / 2, 193);
-  });
+  // 整排位一起等 flow：前面两步不该先冒出一排空位来
+  if (flow > 0) {
+    DEGRADATIONS.forEach((_, i) => {
+      const x = BX0 + i * (BIT + 8);
+      const on = bitOn(i);
+      ctx.fillStyle = on ? GREEN : '#eef2f6';
+      ctx.fillRect(x, 178, BIT, BIT);
+      ctx.strokeStyle = on ? GREEN : LINE;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, 178.5, BIT - 1, BIT - 1);
+      ctx.fillStyle = on ? '#ffffff' : SLATE;
+      ctx.font = `bold 12px ${FONT}`;
+      ctx.fillText(on ? '1' : '0', x + BIT / 2, 193);
+    });
 
-  ctx.globalAlpha = flow;
-  ctx.fillStyle = SLATE;
-  ctx.font = `9px ${FONT}`;
-  ctx.fillText('多热掩码 m̂：每个因子一位，互不串味', 420, 214);
-  ctx.globalAlpha = 1;
+    ctx.globalAlpha = flow;
+    ctx.fillStyle = SLATE;
+    ctx.font = `9px ${FONT}`;
+    ctx.fillText('多热掩码 m̂：每个因子一位，互不串味', 420, 214);
+    ctx.globalAlpha = 1;
+  }
 
   arrowDown(ctx, 420, 220, 234, PURPLE, leftDone);
 
@@ -404,20 +423,18 @@ export const DecouplingDemo: React.FC<WidgetProps> = ({ chapterId, moduleId }) =
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [view, setView] = useState<'implicit' | 'explicit'>('implicit');
   const [progress, setProgress] = useState(0);
-  const [playing, setPlaying] = useState(!analogy);
+  // 动画的目标位置：挂载时是终态（自动播一遍），按「下一步」改成下一段的终点。
+  // 到了目标就停，不常驻跑 CPU。
+  const [target, setTarget] = useState(analogy ? 0 : 1);
+  const done = progress >= target;
 
-  // 挂载即播一次；播完（progress 到 1）就停，不常驻跑 CPU
   useEffect(() => {
-    if (!playing) return;
+    if (done) return;
     const interval = setInterval(() => {
-      setProgress((p) => Math.min(1, p + STEP));
+      setProgress((p) => Math.min(target, p + STEP));
     }, TICK_MS);
     return () => clearInterval(interval);
-  }, [playing]);
-
-  useEffect(() => {
-    if (progress >= 1 && playing) setPlaying(false);
-  }, [progress, playing]);
+  }, [done, target]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -453,20 +470,29 @@ export const DecouplingDemo: React.FC<WidgetProps> = ({ chapterId, moduleId }) =
 
   const replay = () => {
     setProgress(0);
-    setPlaying(true);
+    setTarget(1);
   };
 
+  // 推到下一段的终点并停在那里；已经在最后一段则回到第一步重走
+  const nextStep = () => {
+    const next = STOPS.find((s) => s > progress + 0.001);
+    if (next === undefined) {
+      setProgress(0);
+      setTarget(STOPS[0]);
+    } else {
+      setTarget(next);
+    }
+  };
+
+  const atEnd = progress >= 1 - 0.001;
+
+  // 停在第 k 段终点上就显示第 k 段的文案，所以边界取「停靠点 + 一点点」
+  const stopIdx = STOPS.findIndex((s) => progress < s + 0.001);
   const feedback = analogy
     ? view === 'implicit'
       ? { text: '隐式表示把多种退化压成一个纠缠的整体条件', cls: 'bad' }
       : { text: '显式解耦为每个因子单独给出一份条件', cls: 'good' }
-    : progress < P_TRAVEL[0]
-    ? { text: '输入：同一张图上叠了多种退化因子', cls: '' }
-    : progress < P_MASK[0]
-    ? { text: '两条路：全压进一个条件，还是每个因子各留一份', cls: '' }
-    : progress < P_RESULT[0]
-    ? { text: '左侧因子被搅成一团、互相干扰；右侧 FDPM 给出多热掩码 m̂', cls: '' }
-    : { text: '左侧修好一个可能弄坏另一个；右侧 CDMM 按掩码让对应专家各自校正', cls: 'good' };
+    : STOP_MSGS[stopIdx < 0 ? STOP_MSGS.length - 1 : stopIdx];
 
   return (
     <div className="widget-container">
@@ -506,7 +532,15 @@ export const DecouplingDemo: React.FC<WidgetProps> = ({ chapterId, moduleId }) =
           </div>
         ) : (
           <div className="chip-row">
-            <button type="button" className="chip" onClick={replay}>
+            <button
+              type="button"
+              className="chip"
+              onClick={nextStep}
+              title={atEnd ? '回到第一步，再一步步往下看' : '播放到下一段并停在那里'}
+            >
+              {atEnd ? '分步重看' : '下一步'}
+            </button>
+            <button type="button" className="chip" onClick={replay} title="从头完整播一遍">
               重新播放
             </button>
           </div>

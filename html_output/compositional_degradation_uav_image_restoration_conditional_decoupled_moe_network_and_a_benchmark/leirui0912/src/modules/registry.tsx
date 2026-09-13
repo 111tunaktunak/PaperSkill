@@ -11,6 +11,7 @@ import { ArchitectureExplorer } from './architectureExplorer';
 import { DCMoERouter } from './dcmoeRouter';
 import { AugmentationDemo } from './augmentationDemo';
 import { ResultComparison } from './resultComparison';
+import { HeroConditionCompare } from './heroConditionCompare';
 
 // Widget registry: maps a `componentId` (referenced from src/data/tutorial.ts) to a
 // React component. The generator ADDS entries here for every paper-specific canvas
@@ -27,6 +28,8 @@ export const widgetRegistry: Record<string, React.FC<WidgetProps>> = {};
 widgetRegistry['example-slider'] = ExampleSlider;
 
 // DAME-Net tutorial widgets
+// Hero 两侧共用，靠 Hero.tsx 传入的 moduleId（"old" / "new"）区分渲染方向
+widgetRegistry['hero-condition-compare'] = HeroConditionCompare;
 widgetRegistry['degradation-inspector'] = DegradationInspector;
 widgetRegistry['multi-label-encoder'] = MultiLabelEncoder;
 widgetRegistry['decoupling-demo'] = DecouplingDemo;

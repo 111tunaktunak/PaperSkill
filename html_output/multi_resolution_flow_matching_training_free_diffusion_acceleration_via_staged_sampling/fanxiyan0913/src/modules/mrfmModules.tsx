@@ -154,10 +154,10 @@ export const ResolutionTokens: React.FC<WidgetProps> = ({ chapterId, moduleId })
 // 低清面板原生 512×512，论文排版时把它放大到与其它列同尺寸展示，这里照做并标出原生尺寸。
 // 用 DOM <img> 而不是 canvas：真照片不能被横向压扁（canvas 目前会被容器压到 79% 宽）。
 const SR_METHODS = [
-  { key: 'interp', t: '插值', sr: '/images/sr/interp-sr.jpg', hr: '/images/sr/interp-hr.jpg' },
-  { key: 'swinir', t: 'SwinIR', sr: '/images/sr/swinir-sr.jpg', hr: '/images/sr/swinir-hr.jpg' },
-  { key: 'osediff', t: 'OSEDiff', sr: '/images/sr/osediff-sr.jpg', hr: '/images/sr/osediff-hr.jpg' },
-  { key: 'realesrgan', t: 'Real-ESRGAN', sr: '/images/sr/real-esrgan-sr.jpg', hr: '/images/sr/real-esrgan-hr.jpg' },
+  { key: 'interp', t: '插值', sr: `${import.meta.env.BASE_URL}images/sr/interp-sr.jpg`, hr: `${import.meta.env.BASE_URL}images/sr/interp-hr.jpg` },
+  { key: 'swinir', t: 'SwinIR', sr: `${import.meta.env.BASE_URL}images/sr/swinir-sr.jpg`, hr: `${import.meta.env.BASE_URL}images/sr/swinir-hr.jpg` },
+  { key: 'osediff', t: 'OSEDiff', sr: `${import.meta.env.BASE_URL}images/sr/osediff-sr.jpg`, hr: `${import.meta.env.BASE_URL}images/sr/osediff-hr.jpg` },
+  { key: 'realesrgan', t: 'Real-ESRGAN', sr: `${import.meta.env.BASE_URL}images/sr/real-esrgan-sr.jpg`, hr: `${import.meta.env.BASE_URL}images/sr/real-esrgan-hr.jpg` },
 ];
 const SR_STAGE_TEXT = [
   '第 1 步 · 低清：只用少量步数在低分辨率上生成，主体结构与构图已经定下来（门脸、招牌位置、暖色调），但笔画和字还是糊的。',
@@ -169,7 +169,7 @@ export const StagedSampling: React.FC<WidgetProps> = ({ chapterId, moduleId }) =
   const [m, setM] = useState(3);
   const method = SR_METHODS[m];
   const panels = [
-    { label: '低清', res: '原生 512 × 512', src: '/images/sr/lr-512.png' },
+    { label: '低清', res: '原生 512 × 512', src: `${import.meta.env.BASE_URL}images/sr/lr-512.png` },
     { label: '超分', res: '1024 × 1024', src: method.sr },
     { label: '精修', res: '1024 × 1024', src: method.hr },
   ];

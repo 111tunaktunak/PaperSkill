@@ -389,7 +389,7 @@ export const tutorial: TutorialData = {
           desc:
             '论文附录 Table 8 直接测量了原生 30 步纯文生图轨迹的路径长度，对比高低两种分辨率。这正是“低清收敛更快”的量化依据，也是它能在同样步数预算下画质更好的原因。',
           componentId: 'static-figure',
-          figure: '/images/table8-pathlength.png',
+          figure: `${import.meta.env.BASE_URL}images/table8-pathlength.png`,
           figureCaption:
             '论文 Table 8：30 步纯文生图轨迹的路径长度对比。测试了 512 / 768 / 1024 等分辨率，L 列为原始轨迹长度，L(P_low) 列为低频投影后的长度，R 列为缩短比例——低分辨率下低频骨架对应的路径明显更短。',
         },
@@ -493,7 +493,7 @@ export const tutorial: TutorialData = {
           desc:
             '论文 Figure 3 用同一张 512×512 的低清图跑四种超分，再统一做高清精修。第一行是超分结果、第二行是精修后的最终结果，两行对照着看，就能看出“超分留下的残差是什么性质”如何决定精修能否救回来。',
           componentId: 'static-figure',
-          figure: '/images/fig3-sr-methods.png',
+          figure: `${import.meta.env.BASE_URL}images/fig3-sr-methods.png`,
           figureCaption:
             '论文 Figure 3：在 Qwen-Image 上对比不同超分策略。Low Resolution 是低清生成并 VAE 解码后的像素图（512×512）；SR 行是超分结果，High Resolution Refine 行是精修后的最终图（1024×1024）。Interpolate 与 SwinIR 始终偏糊，OSEDiff 放大后出现字符字形偏差，Real-ESRGAN 最平衡。',
         },
@@ -693,7 +693,7 @@ export const tutorial: TutorialData = {
           desc:
             '论文 Figure 5 在 FLUX.1-dev 与 Qwen-Image 上画出了各方法的“Geneval—加速比”曲线，MrFlow 的不同深浅对应高分辨率阶段用 1、2、3 步。横轴推到 8～10× 时，其他训练无关方法的曲线明显下坠，MrFlow 仍能守住。',
           componentId: 'static-figure',
-          figure: '/images/fig5-tradeoff.png',
+          figure: `${import.meta.env.BASE_URL}images/fig5-tradeoff.png`,
           figureCaption:
             '论文 Figure 5：各训练无关方法的 Geneval 分数与加速比权衡曲线。左 FLUX.1-dev、右 Qwen-Image；MrFlow 的三条深浅不同的曲线分别对应高分辨率精修阶段用 +1 / +2 / +3 步。论文据此指出：MrFlow 是唯一在两个模型上都能稳定优于“直接套用不同时间步配置”这一朴素加速策略的方法。',
         },
@@ -773,7 +773,7 @@ export const tutorial: TutorialData = {
           desc:
             '论文把 MrFlow 与“原生推理”“潜空间上采样”三条路线画在同一张图里，用 Latent Space / Pixel Space 两条横带标出每一步发生在哪个空间。要看清的核心是：MrFlow 是唯一两次跨越两个空间边界、且在像素域完成放大的那条。',
           componentId: 'static-figure',
-          figure: '/images/fig2-framework.png',
+          figure: `${import.meta.env.BASE_URL}images/fig2-framework.png`,
           figureCaption:
             '论文 Figure 2：MrFlow 框架与对比策略。图中区分潜空间（Latent Space）与像素空间（Pixel Space）、低分辨率（Low Resolution）与高分辨率（High Resolution）四个区带，展示原生推理、潜空间上采样与 MrFlow 各自的计算路径。MrFlow 依次经过 LR 采样 → VAE 解码 → 像素域 SR GAN → VAE 编码 → 注噪 → HR 单步 → VAE 解码。',
         },
@@ -862,7 +862,7 @@ export const tutorial: TutorialData = {
           desc:
             '论文 Table 1 是全文最重要的一张表。同一列里看到 8～9× 那一档时请留意：特征缓存类方法的 Geneval 从 0.88 掉到 0.26 甚至 0.09，而 MrFlow 仍守在 0.86。这就是“加速比相同、结果完全不同”。',
           componentId: 'static-figure',
-          figure: '/images/table1-trainingfree.png',
+          figure: `${import.meta.env.BASE_URL}images/table1-trainingfree.png`,
           figureCaption:
             '论文 Table 1：各训练无关加速方法在 FLUX.1-dev 与 Qwen-Image 上的对比（1024×1024，单张 A100，端到端实际加速，含文本编码、噪声生成、VAE 编解码、超分与全部扩散前向）。虚线上方为约 4～6× 档，下方为更激进档位。Qwen-Image 原生为 50×2 NFE，Geneval 0.88；MrFlow (20,1)×2 得 6.98× 且 Geneval 0.87，MrFlow (12,1)×2 得 10.3× 且 Geneval 0.86。',
         },
@@ -873,7 +873,7 @@ export const tutorial: TutorialData = {
           desc:
             '论文 Table 2 换了个对手：时间步蒸馏（SenseFlow、Pi-Flow）与需要训练的多分辨率方法 LSSGen。看最后一组——MrFlow 与已蒸馏好的 Pi-Flow 权重直接组合（记作 MrFlow†），在 Qwen-Image 上到 25.1×，而 OneIG-Bench 损失不超过 1%。',
           componentId: 'static-figure',
-          figure: '/images/table2-trainingdep.png',
+          figure: `${import.meta.env.BASE_URL}images/table2-trainingdep.png`,
           figureCaption:
             '论文 Table 2：与依赖训练的加速方法对比（同为 1024×1024、单张 A100）。† 表示 MrFlow 与 Pi-Flow 蒸馏权重组合，‡ 表示与 FLUX-schnell 组合；两者都直接加载已训练好的权重，不额外训练。Qwen-Image 上 Pi-Flow（4 步）为 19.6×、MrFlow† 为 25.1×。注意 LSSGen 虽然常被归入多分辨率方法，但它需要训练一个轻量潜空间上采样器，因此论文把它列在依赖训练的一组。',
         },
@@ -966,4 +966,35 @@ export const tutorial: TutorialData = {
     oneLiner:
       '把一个昂贵的整体，按“谁在决定什么”拆开，让该便宜的部分真正便宜下来。',
   },
+
+  // ---------------------------------------------------------------
+  // 延伸视频：B 站上与本文主题贴近的讲解。bvid 均为真实视频，卡片点击直达 B 站；
+  // 标题与封面是静态数据，运行时再向 B 站接口补一次实时播放量（失败也不影响卡片）。
+  // ---------------------------------------------------------------
+  bilibili: [
+    {
+      bvid: 'BV1ujazzoExc',
+      title: '【AI知识分享】分钟级速通 Flow Matching（流匹配）',
+      reason:
+        '论文方法的底座就是流匹配。这支 14 分钟的速通版用最短路径把“去噪就是沿轨迹积分”讲清楚，跟 §4 的数学框架正好接得上。',
+      cover: 'https://i1.hdslb.com/bfs/archive/4b50b88d14ddcfb5ef57b321f430284e8dbab601.jpg',
+      views: '2.4万播放',
+    },
+    {
+      bvid: 'BV1Wv3xeNEds',
+      title: '【AI知识分享】你一定能听懂的扩散模型 Flow Matching 流匹配基本原理深度解析',
+      reason:
+        '同一作者的长版（约 70 分钟），把流匹配从概率路径到条件向量场一步步推下来。§4 读着吃力的话，这支能补上前面的直觉。',
+      cover: 'https://i1.hdslb.com/bfs/archive/328f0ad2e8184ca367aa0bcd04b05bf8d55df2fd.jpg',
+      views: '8.3万播放',
+    },
+    {
+      bvid: 'BV1owu6z1EqN',
+      title: '详解扩散模型采样轨迹《Diffusion Sampling Correction via Approximately 10 Parameters》',
+      reason:
+        '专门讲采样轨迹与离散误差的修正。§4 里“步数越小、折线越偏离真实轨迹”那段讨论和它落在同一个问题上，可以对照着看。',
+      cover: 'https://i1.hdslb.com/bfs/archive/a19ab38ad64a52169e42f05406b48bd5570ab56a.jpg',
+      views: '2959播放',
+    },
+  ],
 };

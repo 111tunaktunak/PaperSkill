@@ -242,34 +242,40 @@ export const tutorial: TutorialData = {
       badgeLabel: '基础',
       bridge: 'Condition-Aware Dual-domain Correction Block (CDCB) 在频率域和空间域联合处理特征，因为不同退化在不同域有不同特征。',
       analogy: {
-        title: '应用双重校正',
-        text: '就像同时调整照片的锐度和色彩平衡一样，CDCB在频率和空间域同时处理。',
+        title: '两条分支各管一域',
+        text: '修一张既有噪点又有雨丝的照片，去噪得看频谱、去雨丝得看局部结构，一只手忙不过来。CDCB 就分两条分支：频率分支管模糊、噪声这类频谱显著的退化，空间分支管雨条纹这类结构局部化的退化，最后用一个学习的门 w 把两边融合。',
         componentId: 'cdcb-processor'
       },
       modules: [
         {
           kind: 'module',
           id: '6.1',
-          title: 'CDCB处理器',
-          desc: '频率分支处理频谱特征（模糊、噪声），空间分支处理局部结构（雨条纹）。调整频率-空间门控权重观察效果。',
+          title: '门控混合器',
+          desc: 'CDCB 的两条分支最后由门控权重 w 按 w 与 1 − w 混合。拖 w 看配比怎么变 —— 论文只说 w 是学出来的标量，从没报告过任何具体数值。',
           figure: fig('CDCB.png'),
           componentId: 'cdcb-processor'
         }
       ],
-      insight: '频率分支处理模糊、噪声等频谱退化，空间分支处理雨条纹等结构退化，学习的门控权重平衡两者。',
+      insight: 'CDCB 在频率域与空间域并行处理：频率分支用 ω = softmax(W(g + W_f·GAP(X))) 混合 M = 2 个专家的低秩谱掩码（rank r = 4），并对零频做 β_dc = 0.1 的内容自适应 DC 校正；空间分支用 Swin 窗口注意力。两者由学习的门 X_out = w·X_freq + (1−w)·X_spatial 融合，论文只给了「blur / noise 偏频率、rain streaks 偏空间」的定性描述。',
       formula: {
-        lead: 'CDCB使用频率分支和空间分支联合处理',
-        unicode: 'X_out = w · X_freq + (1-w) · X_spatial',
+        lead: 'CDCB 把两条分支按门控权重 w 融合；频率分支内部还有一个学习出来的专家混合权重',
+        unicode:
+          'ω = softmax(W(g + W_f · GAP(X)))　（M = 2 个频率专家）<br>' +
+          'M⁽ᵐ⁾ = c⁽ᵐ⁾ + Σ_ℓ v_h ⊗ v_w　（低秩谱掩码，rank r = 4）<br>' +
+          'X_out = w · X_freq + (1 − w) · X_spatial',
         symbols: [
-          { sym: 'w', desc: '学习的门控权重' },
-          { sym: 'X_freq', desc: '频率分支输出' },
-          { sym: 'X_spatial', desc: '空间分支输出' }
+          { sym: 'ω', desc: '频率专家的混合权重，由条件向量 g 与全局池化 GAP(X) 共同决定' },
+          { sym: 'M⁽ᵐ⁾', desc: '第 m 个专家的谱调制图，用 rank r = 4 的低秩外积分解得到' },
+          { sym: 'β_dc', desc: '零频（DC）分量的内容自适应校正幅度上界，β_dc = 0.1，管雾、低光、过曝这类全局光照偏移' },
+          { sym: 'w', desc: '学习的门控权重 ∈ [0, 1]，论文未报告具体数值' },
+          { sym: 'X_freq', desc: '频率分支输出（谱调制后逆 FFT 回来）' },
+          { sym: 'X_spatial', desc: '空间分支输出（Swin 窗口注意力）' }
         ]
       },
       takeaways: [
-        { icon: '🎯', title: '双域处理', desc: '不同退化在不同域有不同特征' },
-        { icon: '🔧', title: '频率分支', desc: '处理模糊、噪声等频谱退化' },
-        { icon: '✨', title: '空间分支', desc: '处理雨条纹等结构退化' }
+        { icon: '🎯', title: '双域并行', desc: '频率分支做谱调制 + DC 校正，空间分支做 Swin 窗口注意力' },
+        { icon: '🔧', title: '频率分支', desc: 'M = 2 个专家、rank r = 4 的低秩谱掩码，β_dc = 0.1 校 DC 分量' },
+        { icon: '✨', title: '学习的门', desc: 'X_out = w·X_freq + (1−w)·X_spatial；表 IV：去掉这道门掉 0.95 dB，是 CDMM 里最大的一项' }
       ],
     },
     // Chapter 7: 训练目标

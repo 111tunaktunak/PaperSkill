@@ -7,9 +7,13 @@ import { widgetRegistry } from '../modules/registry';
 export function Hero({
   meta,
   hero,
+  onStart,
+  started,
 }: {
   meta: Meta;
   hero: HeroConfig;
+  onStart: () => void;
+  started: boolean;
 }) {
   const OldWidget = hero.oldMethod.componentId ? widgetRegistry[hero.oldMethod.componentId] : undefined;
   const NewWidget = hero.newMethod.componentId ? widgetRegistry[hero.newMethod.componentId] : undefined;
@@ -57,6 +61,15 @@ export function Hero({
             <div className="bg-side-tag" dangerouslySetInnerHTML={{ __html: hero.newMethod.desc }} />
           </div>
         </div>
+
+        {!started ? (
+          <div className="chap-loader">
+            <div className="chap-loader-hint">准备好了吗？</div>
+            <button className="chap-loader-btn" onClick={onStart}>
+              开始学习 §1 <span className="chap-loader-arrow">→</span>
+            </button>
+          </div>
+        ) : null}
       </div>
     </section>
   );

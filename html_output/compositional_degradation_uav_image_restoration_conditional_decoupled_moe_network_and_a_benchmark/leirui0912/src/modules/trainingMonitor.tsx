@@ -5,7 +5,7 @@ import { markCanvasReady } from './canvasReady';
 import { getScene } from './uavScene';
 import { readableBg } from './factorChips';
 
-// 训练目标（论文 IV-E 节）。
+// 训练目标（论文 III-E 节）。
 //
 // 论文原文只有两阶段，没有第三阶段：
 //   · Stage I：用式(7) L_P = λ_align·L_align + λ_cls·L_cls 训练感知模型 P，
@@ -74,8 +74,8 @@ const TERMS = [
   },
   {
     id: 'base',
-    label: '③ 基座 L1',
-    short: '基座 L1',
+    label: '③ 基座（引导滤波）',
+    short: '基座',
     color: GREEN,
     weight: 'λ_p = 0.1',
     off: '基座分支失去目标，粗光照校正只能靠整图损失间接学'
@@ -126,7 +126,7 @@ function paintTimeline(ctx: CanvasRenderingContext2D) {
 
   ctx.fillStyle = SLATE;
   ctx.font = `9.5px ${FONT}`;
-  ctx.fillText('论文 IV-E：两个阶段各有一条损失（式 7 / 式 16），不是合成的一条', W_ANA / 2, 40);
+  ctx.fillText('论文 III-E：两个阶段各有一条损失（式 7 / 式 16），不是合成的一条', W_ANA / 2, 40);
 
   // ---- Stage I ----
   box(ctx, 28, 60, 240, 142, BLUE, 0.08);
@@ -163,7 +163,7 @@ function paintTimeline(ctx: CanvasRenderingContext2D) {
   ctx.fillText('式 (16)，λ_f = 0.1，λ_p = 0.1', 304, 116);
   ctx.fillStyle = INK;
   ctx.fillText('感知模型 P 全程冻结', 304, 136);
-  ctx.fillText('整图 L1 + 掩码频率 L1 + 基座 L1', 304, 152);
+  ctx.fillText('整图 L1 + 掩码频率 L1 + 基座（引导滤波）', 304, 152);
   ctx.fillText('掩码过载增强 p = 0.05', 304, 168);
   ctx.fillStyle = SLATE;
   ctx.fillText('训练 100 epochs，crop 256×256', 304, 184);
@@ -171,7 +171,7 @@ function paintTimeline(ctx: CanvasRenderingContext2D) {
   ctx.textAlign = 'center';
   ctx.fillStyle = INK;
   ctx.font = `9.5px ${FONT}`;
-  ctx.fillText('论文 IV-E：感知模型 P 先用式(7) 训练，收敛后冻结，之后整个修复训练都不再更新它', W_ANA / 2, 224);
+  ctx.fillText('论文 III-E：感知模型 P 先用式(7) 训练，收敛后冻结，之后整个修复训练都不再更新它', W_ANA / 2, 224);
 
   ctx.fillStyle = SLATE;
   ctx.fillText('超参：AdamW（lr 2×10⁻⁴，weight decay 0.02）、batch size 8、1× A100', W_ANA / 2, 244);
@@ -472,7 +472,7 @@ export const TrainingMonitor: React.FC<WidgetProps> = ({ chapterId, moduleId }) 
 
       ctx.fillStyle = INK;
       ctx.font = `9.5px ${FONT}`;
-      ctx.fillText('三项管的不是同一批像素：整图 L1 保整体，掩码频率 L1 管中高频，基座 L1 管粗光照', W_MOD / 2, 220);
+      ctx.fillText('三项管的不是同一批像素：整图 L1 保整体，掩码频率 L1 管中高频，基座项管粗光照', W_MOD / 2, 220);
 
       ctx.fillStyle = SLATE;
       ctx.font = `9px ${FONT}`;

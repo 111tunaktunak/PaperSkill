@@ -156,7 +156,8 @@ function paintAnalogy(ctx: CanvasRenderingContext2D) {
   ctx.textAlign = 'left';
   ctx.fillText('{gₛ}ₛ₌₁₅', 252, 150);
 
-  // 论文原话：强调与检出因子相关的通路、抑制无关通路
+  // 论文英文原句的译文：emphasize the correction pathways relevant to the detected
+  // factors while suppressing irrelevant ones（III-D 开头）
   ctx.fillStyle = SLATE;
   ctx.font = `9px ${FONT}`;
   ctx.textAlign = 'center';

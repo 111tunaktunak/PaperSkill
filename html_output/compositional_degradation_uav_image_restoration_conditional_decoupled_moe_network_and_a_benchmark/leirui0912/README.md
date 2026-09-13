@@ -35,6 +35,7 @@ npm run preview   # 预览构建结果
 ## 素材来源
 
 - 论文原文：[Compositional-Degradation UAV Image Restoration: Conditional Decoupled MoE Network and A Benchmark](https://arxiv.org/abs/2604.09313)，arXiv:2604.09313。
+- 论文发布的 MDUR 数据集与基准代码：<https://github.com/mmic-lcl/Datasets-and-benchmark-code>（论文引言中给出）。本教程只讲解论文内容，**不包含**该数据集；需要数据请以论文给出的地址为准。
 - `public/images/` 中的 7 张图片均取自论文原图（arXiv e-print 源包 `imgs/*.pdf`，按 150 DPI 渲染为 PNG，纯照片图转为 JPEG），用于本交互式教程的论文讲解：
 
   | 文件 | 论文原图 |

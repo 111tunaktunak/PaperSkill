@@ -9,8 +9,11 @@ import { DEGRADATIONS, getDegraded } from './uavScene';
 //
 // 这里的「编码」指的是数据格式，不是网络模块 —— 论文里真正输出这个掩码的是
 // 第 4 章的 FDPM（CLIP 图像编码器 + 多标签预测头）。本章只演示格式本身：
-// 8 个位各自独立地取 0/1，不是互斥的多分类（论文 III-B 节把退化感知形式化为
-// 多标签预测，正是这个意思）。
+// 8 个位各自独立地取 0/1，不是互斥的多分类（论文 III-C-2 节「CLIP-Based
+// Multi-Label Perception」把退化感知形式化为多标签预测，正是这个意思）。
+//
+// 注意「位可以独立」不等于「配置可以任意搭配」：MDUR 只收录了 43 种有效配置
+// （8 种原子退化里最多叠 4 个），不是 8 位的全部 2⁸ 种组合。画布注脚按论文写。
 //
 // 8 个因子开关与封面、第 1 章共用 FactorChips：同一套 .chip 样式、同一套
 // 因子色、同样的选中底色，末尾也带「清除」。先前这里自己写了一套 bit-btn，
@@ -151,7 +154,7 @@ function paintAnalogy(ctx: CanvasRenderingContext2D, ids: string[]) {
 
   ctx.fillStyle = SLATE;
   ctx.font = `9px ${FONT}`;
-  ctx.fillText('8 个位各自独立取 0/1，不是互斥的多分类 —— 组合可以任意搭配', W_ANA / 2, H_ANA - 16);
+  ctx.fillText('8 个位各自独立取 0/1，不是互斥的多分类；但 MDUR 只收录 43 种有效配置（单因子到四因子）', W_ANA / 2, H_ANA - 16);
 }
 
 /**

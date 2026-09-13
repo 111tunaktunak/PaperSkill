@@ -256,17 +256,19 @@ export const tutorial: TutorialData = {
           componentId: 'cdcb-processor'
         }
       ],
-      insight: 'CDCB 在频率域与空间域并行处理：频率分支用 ω = softmax(W(g + W_f·GAP(X))) 混合 M = 2 个专家的低秩谱掩码（rank r = 4），并对零频做 β_dc = 0.1 的内容自适应 DC 校正；空间分支用 Swin 窗口注意力。两者由学习的门 X_out = w·X_freq + (1−w)·X_spatial 融合，论文只给了「blur / noise 偏频率、rain streaks 偏空间」的定性描述。',
+      insight: 'CDCB 在频率域与空间域并行处理：频率分支用 ω = softmax(W(g + W_f·GAP(X))) 混合 M = 2 个专家的低秩谱掩码（rank r = 4），再按式 11 对零频（DC）分量做内容自适应校正 —— M⁽ᵐ⁾_{:,0,0} ← 1 + b_dc + η·tanh(MLP_dc([g, μ, σ]))，幅度由 η = 0.1 界定，b_dc 是可学习偏置（论文没有给它的取值）；空间分支用 Swin 窗口注意力。两者由学习的门 X_out = w·X_freq + (1−w)·X_spatial 融合，论文只给了「blur / noise 偏频率、rain streaks 偏空间」的定性描述。',
       formula: {
         lead: 'CDCB 把两条分支按门控权重 w 融合；频率分支内部还有一个学习出来的专家混合权重',
         unicode:
           'ω = softmax(W(g + W_f · GAP(X)))　（M = 2 个频率专家）<br>' +
           'M⁽ᵐ⁾ = c⁽ᵐ⁾ + Σ_ℓ v_h ⊗ v_w　（低秩谱掩码，rank r = 4）<br>' +
+          'M⁽ᵐ⁾_{:,0,0} ← 1 + b_dc + η · tanh(MLP_dc([g, μ, σ]))　（式 11：零频校正）<br>' +
           'X_out = w · X_freq + (1 − w) · X_spatial',
         symbols: [
           { sym: 'ω', desc: '频率专家的混合权重，由条件向量 g 与全局池化 GAP(X) 共同决定' },
           { sym: 'M⁽ᵐ⁾', desc: '第 m 个专家的谱调制图，用 rank r = 4 的低秩外积分解得到' },
-          { sym: 'β_dc', desc: '零频（DC）分量的内容自适应校正幅度上界，β_dc = 0.1，管雾、低光、过曝这类全局光照偏移' },
+          { sym: 'η', desc: '零频（DC）分量校正的幅度上界，η = 0.1；tanh 保证校正量不超过 ±η，管雾、低光、过曝这类全局光照偏移' },
+          { sym: 'b_dc', desc: '零频校正里的可学习偏置；论文只写了它是学出来的，没有报告取值' },
           { sym: 'w', desc: '学习的门控权重 ∈ [0, 1]，论文未报告具体数值' },
           { sym: 'X_freq', desc: '频率分支输出（谱调制后逆 FFT 回来）' },
           { sym: 'X_spatial', desc: '空间分支输出（Swin 窗口注意力）' }
@@ -274,7 +276,7 @@ export const tutorial: TutorialData = {
       },
       takeaways: [
         { icon: '🎯', title: '双域并行', desc: '频率分支做谱调制 + DC 校正，空间分支做 Swin 窗口注意力' },
-        { icon: '🔧', title: '频率分支', desc: 'M = 2 个专家、rank r = 4 的低秩谱掩码，β_dc = 0.1 校 DC 分量' },
+        { icon: '🔧', title: '频率分支', desc: 'M = 2 个专家、rank r = 4 的低秩谱掩码，再按式 11（η = 0.1）校 DC 分量' },
         { icon: '✨', title: '学习的门', desc: 'X_out = w·X_freq + (1−w)·X_spatial；表 IV：去掉这道门掉 0.95 dB，是 CDMM 里最大的一项' }
       ],
     },
@@ -317,7 +319,7 @@ export const tutorial: TutorialData = {
       },
       takeaways: [
         { icon: '🎯', title: '两阶段训练', desc: '感知模型先用式(7) 训到收敛并冻结，修复网络再用式(16) 训' },
-        { icon: '🔧', title: '三项损失', desc: '整图 L1 保整体、掩码频率 L1 管中高频、基座 L1 管粗光照；表 V：去掉频率损失掉 0.72 dB（quad 掉 2.49）' },
+        { icon: '🔧', title: '三项损失', desc: '整图 L1 保整体、掩码频率 L1 管中高频、基座（引导滤波）项管粗光照；表 V：去掉频率损失掉 0.72 dB（quad 掉 2.49）' },
         { icon: '✨', title: '掩码过载增强', desc: '以 0.05 的概率给「只含雨或只含雪」的样本随机点亮一个全局位' }
       ],
     },
@@ -386,7 +388,7 @@ export const tutorial: TutorialData = {
       bridge: '为了提高模型的鲁棒性，DAME-Net采用了掩码过载增强等训练技巧。',
       analogy: {
         title: '掩码过载增强',
-        text: '训练时故意把退化掩码改错一点：只含雨（或只含雪）的样本，以 0.05 的概率随机点亮雾、低光、过曝里的某一位。这样路由就不能只依赖一张完美的掩码，必须学会判断图像内容到底支不支持这次激活。',
+        text: '训练时故意把退化掩码改错一点：只含雨（或只含雪）的样本，以 0.05 的概率随机点亮一个全局退化位 —— 也就是雾、低光、过曝里的某一位。这样路由就不能只依赖一张完美的掩码，必须学会判断图像内容到底支不支持这次激活。',
         componentId: 'augmentation-demo'
       },
       modules: [
@@ -398,10 +400,10 @@ export const tutorial: TutorialData = {
           componentId: 'augmentation-demo'
         }
       ],
-      insight: '掩码过载增强的触发条件写得很窄：样本必须「只含雨或只含雪」，且没有雾、没有低光；符合条件时以 0.05 的概率随机点亮雾 / 低光 / 过曝中的一位。论文的因果是「迫使路由在图像内容不支持该激活时抑制无关的全局专家」。表 V：去掉它掉 0.46 dB（quad 掉 0.44）。',
+      insight: '掩码过载增强的触发条件写得很窄：样本必须「只含雨或只含雪」，且没有雾、没有低光；符合条件时以 0.05 的概率随机点亮一个全局退化位。论文的因果是「迫使路由在图像内容不支持该激活时抑制无关的全局专家」。表 V：去掉它掉 0.46 dB（quad 掉 0.44）。<br>「全局位」具体是哪几位，出自式(13) 下面对 m̂_g 的定义：全局位 = {雾, 低光, 过曝}，空间位 = {雨, 雪, 模糊, 噪声, 伪影}，与 E_g = 3 / E_s = 5 两组专家一一对应。',
       takeaways: [
         { icon: '🎯', title: '前提很窄', desc: '只有「只含雨或只含雪、且无雾无低光」的样本才进入抽取，含雾含低光的整批跳过' },
-        { icon: '🔧', title: '随机一个全局位', desc: '被抽中的样本随机点亮雾 / 低光 / 过曝中的一位，不是一个固定位' },
+        { icon: '🔧', title: '随机一个全局位', desc: '被抽中的样本随机点亮雾 / 低光 / 过曝中的一位，不是一个固定位 —— 全局位的定义见式(13) 对 m̂_g 的说明' },
         { icon: '✨', title: '为什么有用', desc: '迫使路由抑制图像内容并不支持的全局专家；表 V：去掉掉 0.46 dB（quad 掉 0.44）' }
       ],
     },
@@ -423,12 +425,14 @@ export const tutorial: TutorialData = {
           kind: 'module',
           id: '10.1',
           title: '结果竞赛器',
-          desc: '对比DAME-Net与五个基线（AirNet, DehazeFormer, Restormer, PromptIR, AdaIR）在两组口径下的平均性能：已见 21 个任务、未见 22 个任务（zero-shot）。两组都按退化复杂度再分组报告，这里用的是六个方法都报告了的两行总平均（表 I 的 Overall Seen / Overall Unseen）。',
+          desc: '对比 DAME-Net 与五个基线（AirNet, DehazeFormer, Restormer, PromptIR, AdaIR）在两组口径下的平均性能：已见 21 个任务、未见 22 个任务（zero-shot）。五个基线都在同一份 MDUR 训练划分、同样的训练协议下重新训练过。论文正文只报告按复杂度（单/双/三/四因子）与按口径（已见/未见）分组的总平均，逐任务的完整表格在补充材料里 —— 这里取的正是论文正文那两行总平均（表 I 的 Overall Seen / Overall Unseen）。',
           figure: fig('qualitative_analysis.jpg'),
           componentId: 'result-comparison'
         }
       ],
-      insight: '表 I 里 DAME-Net 在每一个分组上都是最高。已见侧随复杂度上升，自身从 29.52 dB / 0.9091（单因子）降到 26.88 dB / 0.8389（双因子）、25.73 dB / 0.8105（三因子），总体已见 27.67 dB / 0.8602；未见侧总体 18.62 dB / 0.6271。领先幅度在未见侧明显更大：总体未见高出最强基线 PromptIR 2.16 dB，而总体已见只高出 0.24 dB。',
+      insight: '表 I 一共八个分组行（已见：单/双/三因子与总体；未见：双/三/四因子与总体），DAME-Net 在每一行上都是最高。已见侧随复杂度上升，自身从 29.52 dB / 0.9091（单因子）降到 26.88 dB / 0.8389（双因子）、25.73 dB / 0.8105（三因子），总体已见 27.67 dB / 0.8602；未见侧总体 18.62 dB / 0.6271。领先幅度在未见侧明显更大：总体未见高出最强基线 PromptIR 2.16 dB，而总体已见只高出 0.24 dB。' +
+        '<br><br>论文的三项贡献：① <b>DAME-Net</b> —— 一个退化感知的混合专家网络，FDPM 给出逐因子的退化线索，CDMM 用掩码约束的解耦专家路由做按条件的复原；② <b>MDUR</b> —— 首个大规模 UAV 组合式图像复原基准（Multi-Degradation UAV Restoration），43 种退化配置从单因子到四因子，配标准化的已见/未见划分，用来评测组合泛化；③ 在 MDUR 上做系统性实验，证明对代表性统一复原基线有一致提升、在未见与高阶组合上提升更大，并用下游目标检测实验验证了对 UAV 感知的收益。' +
+        '<br><br>论文也没有回避局限：从已见到未见、从低阶到高阶，绝对修复质量仍有明显下降，高度耦合的退化依然困难；把框架扩展到更真实的组合退化、并提升退化感知的鲁棒性，是作者点名的后续方向。另外，43 种配置的具体构造与合成规则、逐任务的完整表格、检测器评测与复杂度分析，都放在补充材料里，正文没有展开。',
       formula: {
         lead: '评估指标',
         unicode: 'PSNR = 10·log₁₀(MAX²/MSE)，SSIM 均在该图的亮度通道（YCbCr 的 Y 通道）上计算',
@@ -440,7 +444,7 @@ export const tutorial: TutorialData = {
         ]
       },
       takeaways: [
-        { icon: '🎯', title: '一致优势', desc: '论文表 I 的每个分组（已见/未见 × 单/双/三/四因子）上 DAME-Net 都是最高' },
+        { icon: '🎯', title: '一致优势', desc: '论文表 I 的八个分组行（已见 单/双/三因子与总体、未见 双/三/四因子与总体）上 DAME-Net 都是最高' },
         { icon: '🔧', title: '组合泛化', desc: '未见配置上的领先幅度更大：总体未见 18.62 dB，高出最强基线 2.16 dB；已见只高出 0.24 dB' },
         { icon: '✨', title: '下游受益', desc: '论文表 II：冻结的 YOLOv8n 在 43 个退化设置上，mAP50 从退化输入的 0.0971 升到 0.2518，比最强基线 PromptIR（0.2469）高；干净图（GT）上限 0.5419' }
       ],

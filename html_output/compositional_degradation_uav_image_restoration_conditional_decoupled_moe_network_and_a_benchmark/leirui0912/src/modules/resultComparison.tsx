@@ -7,10 +7,13 @@ import { readableBg } from './factorChips';
 
 // 数值全部取自论文表 I（Table I，MDUR 上的平均结果，PSNR/SSIM），没有任何估计值。
 //
-// 表 I 只按「退化复杂度 × 评测协议」分组报告平均，其中六个方法都齐全的是两行：
+// 表 I 有九个分组行（已见单/双/三因子 + Overall Seen；未见双/三/四因子 + Overall
+// Unseen，以及首行的 Seen / Zero-Shot Settings 小标题行），每一行六个方法都报齐。
+// 本模块取的是两组口径各自的总体平均：
 //   seen   = Overall Seen   21 个已见任务
 //   unseen = Overall Unseen 22 个未见任务（zero-shot）
-// 这两行必须整行比较。纸面上也出现过 23.04 dB / 0.7410 这个数（表 III 的
+// 取这两行的理由不是「别的行缺数」，而是它们各自是所在口径唯一的总平均 —— 一张图
+// 里只放两组同样的口径，不把分复杂度的小组平均混进来。纸面上也出现过 23.04 dB / 0.7410 这个数（表 III 的
 // Full model 行，即 43 个任务的总平均），但基线没有同口径的数字，拿它去比基线
 // 的分组平均会得出相反的名次，所以这里不用。
 // 正文可互验：「improves the overall seen average from 27.43 dB / 0.8544 to
@@ -219,7 +222,7 @@ function paintChart(
 
   ctx.fillStyle = SLATE;
   ctx.font = `9.5px ${FONT}`;
-  ctx.fillText('论文表 I：按退化复杂度分组、六个方法都报告了的平均行', W_MOD / 2, 40);
+  ctx.fillText('论文表 I：按评测口径分组（已见 / 未见 zero-shot），每次都取该口径的总平均', W_MOD / 2, 40);
 
   const chartX = 104;
   const chartY = 52;

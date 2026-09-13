@@ -78,8 +78,8 @@ const CHAIN = [
     color: PURPLE,
     lines: [
       '通道宽度 24 / 48 / 96 / 48 / 24',
-      '每阶段一个 CDCB（频域 + 空域双分支）',
-      '每阶段再过一个 DC-MoE 前馈',
+      '每阶段一个 CDCB（双分支，据 Fig. 4）',
+      '每阶段再过一个 DC-MoE 前馈（据 Fig. 4）',
       'Eg = 3 全局专家 / Es = 5 空间专家'
     ]
   },
@@ -203,7 +203,7 @@ function paintDualBranch(ctx: CanvasRenderingContext2D) {
 
   ctx.fillStyle = SLATE;
   ctx.font = `9.5px ${FONT}`;
-  ctx.fillText('论文原话：这样分能稳定训练，也减少残差通路把粗光照误差一起吸收的倾向', W_ANA / 2, 298);
+  ctx.fillText('论文：这种分离能稳定训练，也减少残差通路吸收粗光照误差的倾向（原文为英文，此处是译文）', W_ANA / 2, 298);
 }
 
 /**
@@ -267,7 +267,7 @@ function paintChain(ctx: CanvasRenderingContext2D, sel: string) {
 
   ctx.fillStyle = SLATE;
   ctx.font = `9px ${FONT}`;
-  ctx.fillText('常数出自论文 III-D-4 与实现细节一节', px + 14, py + ph - 12);
+  ctx.fillText('常数出自论文 III-D（各组件小节）与 IV-A 实现细节', px + 14, py + ph - 12);
 }
 
 export const ArchitectureExplorer: React.FC<WidgetProps> = ({ chapterId, moduleId }) => {

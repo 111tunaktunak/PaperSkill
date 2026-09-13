@@ -409,10 +409,10 @@ export const FDPMDetector: React.FC<WidgetProps> = ({ chapterId, moduleId }) => 
       ? { text: '无退化：8 位退化掩码全 0，clean 位为 1', cls: '' }
       : { text: `${n} 种因子各占一位，m̂ 是 8 位多热向量；clean 位在复原阶段丢弃`, cls: 'good' }
     : n === 0
-      ? { text: '干净任务：与自己的 S = 1，与 8 个退化任务的 S 全为 0', cls: '' }
+      ? { text: '干净任务：与自己的 S = 1，与 8 个退化任务的 S 全为 0（Q 仍不是 one-hot，见右）', cls: '' }
       : n === 1
         ? {
-            text: '只选了 1 个因子：它与自己 S = 1、与其余 7 个因子和 clean 都是 0 —— 这时硬对齐与软目标结果相同',
+            text: '只选了 1 个因子：它与自己 S = 1、与其余 7 个因子和 clean 都是 0。但 Q = softmax(2·S) 仍不是 one-hot —— 自己只分到约 0.48，剩下约 0.52 摊给其他任务；只是单因子时软硬目标的差距最小',
             cls: ''
           }
         : {

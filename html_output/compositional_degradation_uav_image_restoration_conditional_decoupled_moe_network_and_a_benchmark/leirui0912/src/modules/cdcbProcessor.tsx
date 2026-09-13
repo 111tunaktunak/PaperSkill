@@ -12,7 +12,8 @@ import { markCanvasReady } from './canvasReady';
 //     每个专家出一个低秩（rank r = 4）的谱调制图
 //       M⁽ᵐ⁾ = c⁽ᵐ⁾ + Σ_ℓ v_h^{(m,ℓ)} ⊗ v_w^{(m,ℓ)}；
 //     另有内容自适应的 DC 校正
-//       M̃_{(:,:,0,0)} ← 1 + β_dc + γ·tanh(MLP_dc([g, μ, σ]))，β_dc = 0.1。
+//       M⁽ᵐ⁾_{:,0,0} ← 1 + b_dc + η·tanh(MLP_dc([g, μ, σ]))（式 11），η = 0.1 界定
+//     校正幅度；b_dc 是可学习偏置，论文没有给它的取值。
 //   · 空间分支：Swin 窗口注意力，捕局部结构相关性。
 //   · 门：X_out = w·X_freq + (1 − w)·X_spatial，w ∈ [0,1] 是学出来的标量。
 //   · 定性描述只有一句：频谱显著的退化（blur、noise）偏频率，结构局部化的退化
@@ -25,7 +26,7 @@ import { markCanvasReady } from './canvasReady';
 //        退化的定性倾向。回答「w 为什么不好给定」。
 //
 // 先前两处挂的是同一个组件、画同一张图，且画布是纯占位图（完全没有论文里的
-// M = 2 / r = 4 / β_dc = 0.1 这些常数）；反馈行按 w 阈值给「适合雨条纹」「适合
+// M = 2 / r = 4 / η = 0.1 这些常数）；反馈行按 w 阈值给「适合雨条纹」「适合
 // 模糊、噪声」的断定，读起来像论文真的报过每类退化的 w，其实是编的 —— 现在明确
 // 标注 w 由网络学习、论文未报告数值，反馈只重复论文那句定性描述。
 //
@@ -49,7 +50,6 @@ const LINE = '#d7deea';
 const BLUE = '#2f6fd0'; // 频率分支
 const GREEN = '#228d5c'; // 空间分支
 const ORANGE = '#f07e47'; // 门
-const OFF = '#f4f6f9';
 
 /** 描边 + 浅底的方框。 */
 function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, alpha = 0.1) {
@@ -122,7 +122,7 @@ function paintTopology(ctx: CanvasRenderingContext2D) {
   // 8.5px 下希腊 ω 和门控 w 长得几乎一样，前面加「专家混合」把它和下方那个门分开
   ctx.fillText('专家混合 ω = softmax(W(g + W_f·GAP(X)))', 40, 181);
   ctx.fillText('M = 2 个专家，谱掩码 rank r = 4', 40, 196);
-  ctx.fillText('DC 校正 β_dc = 0.1 管雾/低光/过曝', 40, 211);
+  ctx.fillText('DC 校正 η = 0.1 管雾/低光/过曝', 40, 211);
 
   // ---- 空间分支 ----
   box(ctx, 290, 112, 240, 104, GREEN, 0.08);
@@ -173,7 +173,7 @@ function paintGate(ctx: CanvasRenderingContext2D, w: number) {
 
   ctx.fillStyle = SLATE;
   ctx.font = `9.5px ${FONT}`;
-  ctx.fillText('论文原话：w ∈ [0, 1] 是学出来的标量，全文没有报告任何具体数值', W_MOD / 2, 40);
+  ctx.fillText('论文只写 w ∈ [0, 1] 是学出来的标量，全文没有报告任何具体数值', W_MOD / 2, 40);
 
   // ---- 配比条 ----
   const x0 = 60;
@@ -222,7 +222,7 @@ function paintGate(ctx: CanvasRenderingContext2D, w: number) {
   ctx.font = `9px ${FONT}`;
   ctx.fillText('FFT → 谱调制 → 逆 FFT', 72, cy + 36);
   ctx.fillText('M = 2 个专家，rank r = 4', 72, cy + 52);
-  ctx.fillText('DC 校正 β_dc = 0.1', 72, cy + 68);
+  ctx.fillText('DC 校正 η = 0.1', 72, cy + 68);
 
   box(ctx, 290, cy, 210, 84, GREEN, 0.08);
   ctx.fillStyle = GREEN;

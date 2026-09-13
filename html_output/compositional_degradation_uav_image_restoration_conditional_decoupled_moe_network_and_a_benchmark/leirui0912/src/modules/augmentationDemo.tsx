@@ -47,8 +47,10 @@ const BLUE = '#2f6fd0';
 const GREEN = '#228d5c';
 const ORANGE = '#f07e47';
 
-// 全局位就是论文说的 global degradation bit：雾、低光、过曝三位
-// （顺序沿用全站共用的 DEGRADATIONS：雨 0、雪 1、雾 2、低光 3、过曝 4、模糊 5、噪声 6、伪影 7）
+// 论文在掩码过载那一句里只说「随机点亮一个全局退化位（one randomly activated
+// global degradation bit）」，没有点名；但式(13) 下方明确定义了 m̂_g 选的就是
+// {haze, low-light, over-exposure} 这三位，所以这里取雾、低光、过曝。
+// （下标顺序沿用全站共用的 DEGRADATIONS：雨 0、雪 1、雾 2、低光 3、过曝 4、模糊 5、噪声 6、伪影 7）
 const GLOBAL_IDX = [2, 3, 4];
 
 const N = 30; // 一批采样多少个样本
@@ -234,6 +236,10 @@ function paintBatch(ctx: CanvasRenderingContext2D, base: { bits: number[]; ok: b
   ctx.fillStyle = SLATE;
   ctx.font = `9px ${FONT}`;
   ctx.fillText('只有「只含雨或只含雪（没有雾、没有低光）」的样本进入抽取，其余整批跳过 —— 这是论文的前提', W_MOD / 2, 292);
+
+  ctx.fillStyle = SLATE;
+  ctx.font = `9px ${FONT}`;
+  ctx.fillText('「全局位」= 雾 / 低光 / 过曝：论文式(13) 下方定义 m̂_g 就是选这三位', W_MOD / 2, 308);
 
   ctx.fillText('表 V：去掉掩码过载增强 → 22.58 dB（掉 0.46；quad 任务掉 0.44）', W_MOD / 2, 312);
 }

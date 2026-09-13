@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WidgetProps } from './registry';
+import { markCanvasReady } from './canvasReady';
 
 // Degradation Inspector Widget
 // Allows users to explore different degradation types and their effects on images
@@ -38,6 +39,8 @@ export const DegradationInspector: React.FC<WidgetProps> = ({ chapterId, moduleI
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    markCanvasReady(canvas);
 
     const w = canvas.width;
     const h = canvas.height;

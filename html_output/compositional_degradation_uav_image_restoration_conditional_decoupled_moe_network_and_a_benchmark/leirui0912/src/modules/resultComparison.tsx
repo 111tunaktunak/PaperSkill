@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WidgetProps } from './registry';
+import { markCanvasReady } from './canvasReady';
 
 const METHODS = [
   { name: 'DAME-Net (Ours)', psnr: 23.04, ssim: 0.7410, color: '#228d5c' },
@@ -38,6 +39,8 @@ export const ResultComparison: React.FC<WidgetProps> = ({ chapterId, moduleId })
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    markCanvasReady(canvas);
 
     const w = canvas.width;
     const h = canvas.height;

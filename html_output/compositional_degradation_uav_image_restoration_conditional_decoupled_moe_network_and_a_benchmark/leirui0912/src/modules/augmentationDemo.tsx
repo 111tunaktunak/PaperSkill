@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WidgetProps } from './registry';
+import { markCanvasReady } from './canvasReady';
 
 export const AugmentationDemo: React.FC<WidgetProps> = ({ chapterId, moduleId }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -12,6 +13,8 @@ export const AugmentationDemo: React.FC<WidgetProps> = ({ chapterId, moduleId })
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    markCanvasReady(canvas);
 
     const w = canvas.width;
     const h = canvas.height;

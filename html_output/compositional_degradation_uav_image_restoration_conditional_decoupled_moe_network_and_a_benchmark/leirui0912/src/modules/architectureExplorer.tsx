@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WidgetProps } from './registry';
+import { markCanvasReady } from './canvasReady';
 
 const COMPONENTS = [
   { id: 'input', name: '输入图像', x: 180, y: 20, w: 80, h: 30, color: '#27446e' },
@@ -20,6 +21,8 @@ export const ArchitectureExplorer: React.FC<WidgetProps> = ({ chapterId, moduleI
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    markCanvasReady(canvas);
 
     const w = canvas.width;
     const h = canvas.height;

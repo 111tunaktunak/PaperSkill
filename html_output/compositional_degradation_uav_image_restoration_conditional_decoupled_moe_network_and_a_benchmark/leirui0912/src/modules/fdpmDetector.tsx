@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WidgetProps } from './registry';
+import { markCanvasReady } from './canvasReady';
 
 const DEGRADATION_TYPES = [
   { id: 'rain', name: '雨', color: '#3b82f6' },
@@ -32,6 +33,8 @@ export const FDPMDetector: React.FC<WidgetProps> = ({ chapterId, moduleId }) => 
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    markCanvasReady(canvas);
 
     const w = canvas.width;
     const h = canvas.height;

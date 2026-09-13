@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { setupCanvas } from '../lib/canvasKit';
 import type { WidgetProps } from './registry';
 
@@ -21,7 +21,6 @@ import type { WidgetProps } from './registry';
 const FONT = '"Segoe UI", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif';
 
 // 语义遵循 tokens.css：red=失败/旧方法，green=成功/本文方法
-const INK = '#21324a';
 const SLATE = '#68778f';
 const SLATE2 = '#8b97ab';
 const LINE = '#d7deea';
@@ -42,6 +41,25 @@ const DEGRADATIONS = [
 
 const ALL_IDS = DEGRADATIONS.map((d) => d.id);
 const colorOf = (id: string) => DEGRADATIONS.find((d) => d.id === id) ?? DEGRADATIONS[0];
+
+/**
+ * 选中态底色：把因子色按比例压暗到相对亮度 ≤ 0.18，保证白字对比度 ≥ 4.5:1。
+ * 直接拿因子本色当选中底色时，「雪」(#e2e8f0) 这类近白色在白卡片上等于没有选中反馈。
+ */
+function readableBg(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lin = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const rel = (k: number) => 0.2126 * lin(r * k) + 0.7152 * lin(g * k) + 0.0722 * lin(b * k);
+  let k = 1;
+  while (k > 0.3 && rel(k) > 0.18) k -= 0.02;
+  const c = (v: number) => Math.round(clamp255(v * k));
+  return `rgb(${c(r)},${c(g)},${c(b)})`;
+}
 
 // ---------------------------------------------------------------------------
 // 共享 store：两个 Hero 实例读写同一份状态
@@ -568,35 +586,51 @@ function draw(
 // ---------------------------------------------------------------------------
 
 export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const snap = useSyncExternalStore(subscribe, getSnapshot);
   const active = snap.active;
   const implicit = moduleId === 'old';
 
-  // 画布只在挂载时初始化一次。setupCanvas 会写入固定像素宽度，
-  // 这里改成跟随栏宽并限高，避免在窄列中被裁切、在宽列中被放大糊掉。
+  // 挂载即出图：建背衬 → 绘制 → 淡入都在同一个 effect 里完成，
+  // 不依赖另一个 effect 先把 ctx 写进 ref，默认状态就不会停在空画布上。
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    try {
-      const ctx = setupCanvas(canvas, W, H);
-      canvas.style.width = '100%';
-      canvas.style.height = 'auto';
-      canvas.style.maxWidth = W + 'px';
-      canvas.style.margin = '0 auto';
-      ctxRef.current = ctx;
-    } catch {
-      ctxRef.current = null;
-    }
-  }, []);
+    if (!canvasEl) return;
 
-  useEffect(() => {
-    const ctx = ctxRef.current;
-    if (!ctx) return;
-    const deg = ensureDegraded(active, snap.version);
-    draw(ctx, implicit, active, deg, cleanCv);
-  }, [implicit, active, snap.version]);
+    const dpr = window.devicePixelRatio || 1;
+    let ctx = ctxRef.current;
+    // 背衬尺寸与当前 dpr 不一致时才重建（首次挂载，或跨屏拖动导致 dpr 变化）。
+    // setupCanvas 会重置位图，所以重建之后必须紧接着重绘。
+    if (
+      !ctx ||
+      canvasEl.width !== Math.round(W * dpr) ||
+      canvasEl.height !== Math.round(H * dpr)
+    ) {
+      try {
+        ctx = setupCanvas(canvasEl, W, H);
+        // 跟随栏宽并限高：避免在窄列中被裁切、在宽列中被放大糊掉
+        canvasEl.style.width = '100%';
+        canvasEl.style.height = 'auto';
+        canvasEl.style.maxWidth = W + 'px';
+        canvasEl.style.margin = '0 auto';
+      } catch {
+        // 退化路径：拿不到 2D 上下文时按 1x 画，至少不留空白
+        const fallback = canvasEl.getContext('2d');
+        if (!fallback) return;
+        canvasEl.width = W;
+        canvasEl.height = H;
+        ctx = fallback;
+      }
+      ctxRef.current = ctx;
+    }
+
+    const clean = ensureScene();
+    draw(ctx, implicit, active, ensureDegraded(active, snap.version), clean);
+
+    // components.css 里 canvas 默认 opacity:0，靠 .is-ready 淡入。
+    // 补上这个类，否则画得再对也永远不可见。
+    canvasEl.classList.add('is-ready');
+  }, [canvasEl, implicit, active, snap.version]);
 
   const n = active.length;
   let feedbackText: string;
@@ -617,11 +651,12 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
 
   return (
     <div>
-      <canvas id={`cv-${moduleId}-cond`} ref={canvasRef} width={W} height={H} />
+      <canvas id={`cv-${moduleId}-cond`} ref={setCanvasEl} width={W} height={H} />
 
       <div className="chip-row">
         {DEGRADATIONS.map((d) => {
           const on = active.includes(d.id);
+          const bg = readableBg(d.color);
           return (
             <button
               key={d.id}
@@ -629,9 +664,7 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
               className={`chip${on ? ' selected' : ''}`}
               aria-pressed={on}
               onClick={() => toggleDegradation(d.id)}
-              style={
-                on ? { background: `${d.color}22`, borderColor: d.color, color: INK } : undefined
-              }
+              style={on ? { background: bg, borderColor: bg, color: '#fff' } : undefined}
             >
               <span
                 style={{
@@ -639,6 +672,8 @@ export const HeroConditionCompare: React.FC<WidgetProps> = ({ moduleId }) => {
                   height: 9,
                   borderRadius: 3,
                   background: d.color,
+                  // 「雪」这类近白色块在白底上几乎看不见，描一圈边保证可辨
+                  boxShadow: 'inset 0 0 0 1px rgba(33,50,74,0.35)',
                   display: 'inline-block',
                 }}
               />

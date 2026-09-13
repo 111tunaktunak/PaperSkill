@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { WidgetProps } from './registry';
+import { markCanvasReady } from './canvasReady';
 
 const EXPERTS = [
   { id: 'haze', name: '雾', group: 'global', color: '#8b5cf6' },
@@ -42,6 +43,8 @@ export const DCMoERouter: React.FC<WidgetProps> = ({ chapterId, moduleId }) => {
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    markCanvasReady(canvas);
 
     const w = canvas.width;
     const h = canvas.height;

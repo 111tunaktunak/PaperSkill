@@ -37,4 +37,3 @@ npm run preview   # 预览构建结果
 - 论文原图（`public/images/fig*.png`）：来自论文 *TESSERA v2: Scaling Pixel-wise Earth Foundation Models*（arXiv:2607.03949v2，作者 Zhengpeng Feng 等；该论文在 arXiv 上采用 CC BY 4.0 许可），文件名依次对应原论文图 2、图 3、图 4、图 7、图 8、图 9。
 - 延伸视频：标题、封面与播放量信息来自 bilibili.com 对应视频页，仅作外链推荐展示，本项目不托管视频内容。
 - 论文链接：https://arxiv.org/abs/2607.03949
-

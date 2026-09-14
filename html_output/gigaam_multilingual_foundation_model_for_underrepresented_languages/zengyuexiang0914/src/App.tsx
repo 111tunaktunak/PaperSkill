@@ -13,8 +13,8 @@ import {
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "./components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 
 const navItems = [
   ["问题", "#problem"],

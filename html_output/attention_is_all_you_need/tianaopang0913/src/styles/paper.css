@@ -7,4 +7,8 @@
 :root {
   --paper-scene-bg: #f5f8f0;
   --paper-accent-2: #d97706;
+  --paper-title-red: #c43f52;
 }
+
+/* 首页英文论文标题：仅改变颜色，保留模板字号与布局。 */
+.hero h1 { color: var(--paper-title-red); }

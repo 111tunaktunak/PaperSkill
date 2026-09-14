@@ -359,6 +359,58 @@
 .story-score { color: #228d5c; font-size: 2rem; font-weight: 800; line-height: 1; margin: 12px 0; }
 .story-score small { color: var(--paper-muted); font-size: 1rem; }
 
+/* Hands-on learning surfaces: each exercise has one learner-controlled decision. */
+.story-workbench, .story-artist-studio, .story-reward-mixer, .story-metric-lens { margin-top: 16px; padding: 16px; border: 1px solid var(--paper-axis); background: #f8fafc; }
+.story-workbench-head { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 13px; }
+.story-workbench-head strong { display: block; color: var(--paper-ink); }
+.story-workbench-head small { display: block; max-width: 620px; margin-top: 3px; color: var(--paper-muted); font-size: .8rem; line-height: 1.45; }
+.story-workbench-head > span, .story-reward-score { flex: 0 0 auto; padding: 6px 9px; border: 1px solid #9db0cc; color: #27446e; background: #fff; font-size: .82rem; font-weight: 850; }
+.story-workbench-grid { display: grid; grid-template-columns: 150px 180px minmax(220px, 1fr); gap: 14px; align-items: stretch; }
+.story-workbench-grid .story-photo { width: 150px; height: 100%; min-height: 132px; }
+.story-defect-picker { display: grid; gap: 8px; align-content: center; }
+.story-defect-picker button, .story-direction-row button, .story-gate button { min-height: 38px; padding: 8px 10px; border: 1px solid #c8d3e1; color: var(--paper-ink); background: #fff; font-weight: 750; text-align: left; transition: .18s ease; }
+.story-defect-picker button:hover, .story-direction-row button:hover, .story-gate button:hover { border-color: #27446e; transform: translateY(-1px); }
+.story-defect-picker button.active, .story-direction-row button.active, .story-gate button.active { border-color: #228d5c; color: #176c46; background: #f3faf6; box-shadow: inset 3px 0 0 #228d5c; }
+.story-defect-picker b { display: inline-grid; place-items: center; width: 18px; margin-right: 7px; color: #228d5c; }
+.story-diagnosis-output { display: grid; align-content: center; gap: 4px; padding: 12px; border-left: 3px solid #7c3aed; background: #fff; }
+.story-diagnosis-output small { color: #5c35b9; font-weight: 850; }
+.story-diagnosis-output ul, .story-diagnosis-output p { margin: 0 0 5px; color: var(--paper-muted); font-size: .86rem; line-height: 1.5; }
+.story-diagnosis-output ul { padding-left: 18px; }
+.story-run-button, .story-stage-actions button { padding: 9px 14px; border: 1px solid #228d5c; color: #fff; background: #228d5c; font-weight: 800; }
+.story-run-button:hover, .story-stage-actions button:hover { background: #176c46; }
+.story-direction-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.story-direction-row button { text-align: center; }
+.story-execution-strip { display: grid; grid-template-columns: 1.2fr 24px 1fr 24px 1fr; gap: 5px; align-items: center; padding: 10px; border: 1px dashed #b8c4d5; background: #fff; font-size: .83rem; }
+.story-execution-strip span { padding: 8px; text-align: center; }
+.story-execution-strip .condition { color: #5c35b9; background: #faf8ff; }
+.story-execution-strip .action { color: #176c46; background: #f3faf6; }
+.story-execution-strip .result { color: var(--paper-muted); background: #f6f8fb; }
+.story-execution-strip.done .result { color: #176c46; background: #e7f5ec; animation: story-result-enter .45s var(--ease-out) both; }
+.story-execution-strip i { color: #71839b; font-style: normal; font-weight: 850; text-align: center; }
+.story-stage-progress { height: 6px; margin: 3px 0 16px; overflow: hidden; border-radius: 99px; background: #e3e9f1; }
+.story-stage-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #27446e, #7c3aed, #228d5c); transition: width .35s var(--ease-out); }
+.story-training-step { cursor: pointer; transition: opacity .2s ease, transform .2s ease; }
+.story-training-step.pending { opacity: .42; }
+.story-stage-actions { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-top: 16px; padding: 12px 14px; border: 1px solid var(--paper-axis); background: #fff; }
+.story-stage-actions span { color: var(--paper-muted); }
+.story-stage-actions b { color: var(--paper-ink); }
+.story-stage-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.story-reward-mixer { background: #fffaf6; border-color: #f0c3a9; }
+.story-gate { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.story-gate span { color: var(--paper-muted); font-size: .84rem; }
+.story-mixer-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.story-mixer-sliders label { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 11px; border: 1px solid var(--paper-axis); background: #fff; color: var(--paper-muted); font-size: .86rem; font-weight: 750; }
+.story-mixer-sliders label.focused { border-color: #228d5c; box-shadow: inset 0 0 0 1px #228d5c; }
+.story-mixer-sliders label b { color: #176c46; }
+.story-mixer-sliders input { grid-column: 1 / -1; width: 100%; accent-color: #228d5c; }
+.story-metric-lens { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; align-items: center; margin-top: 14px; padding: 14px; border: 1px solid #c8d3e1; background: #f8fafc; }
+.story-metric-lens strong { display: block; color: var(--paper-ink); }
+.story-metric-lens small { color: var(--paper-muted); font-size: .8rem; }
+.story-metric-lens .story-direction-row { margin: 0; justify-content: end; }
+.story-metric-lens p { grid-column: 1 / -1; margin: 0; padding: 9px 11px; border-left: 3px solid #27446e; background: #fff; color: var(--paper-muted); font-size: .86rem; }
+.story-metric-lens p b { color: #27446e; }
+@keyframes story-result-enter { from { opacity: .25; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
 .story-artist-layout { grid-template-columns: 1fr minmax(150px, 1.2fr) 1fr; align-items: center; text-align: center; }
 .story-artist-layout > div { display: grid; place-items: center; gap: 8px; padding: 10px; }
 .story-condition { min-height: 118px; border: 1px dashed #7c3aed; color: #5c35b9; background: #faf8ff; }

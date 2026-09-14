@@ -100,4 +100,21 @@ export const tutorial: TutorialData = {
       takeaways: [{ icon: '1', title: '解决什么', desc: '用户说不清问题时的自动摄影增强。' }, { icon: '2', title: '怎么解决', desc: 'Critic 先诊断，Artist 再执行。' }, { icon: '3', title: '关键启发', desc: '先判断，再编辑；再用奖励共同优化。' }],
     },
   ],
+  bilibili: [
+    {
+      bvid: 'BV1fk4y1J753',
+      title: '§4 Artist 补充：李宏毅讲解 Diffusion Model 原理剖析',
+      reason: '帮助理解 Photographic Artist 为什么能以扩散模型完成生成式摄影编辑；该视频讲解的是通用扩散模型基础，并非 SmartPhotoCrafter 官方视频。',
+    },
+    {
+      bvid: 'BV1FTjxzaEHb',
+      title: '§6–§7 强化学习补充：吴恩达 GRPO 与奖励函数课程',
+      reason: '用于补充理解 GRPO、奖励函数与强化微调的基本概念；视频面向大语言模型，SmartPhotoCrafter 中的具体奖励仍以本教程和论文为准。',
+    },
+    {
+      bvid: 'BV1PP4y197Xq',
+      title: '§8 任务补充：扩散模型如何用于图像修复',
+      reason: '以图像修复案例直观展示扩散模型的复原能力，帮助联系论文中的图像复原实验；该案例并非 SmartPhotoCrafter 方法本身。',
+    },
+  ],
 };
